@@ -1,0 +1,5 @@
+//Single resource informations
+{
+  "metadata" : {}, //Resource metadata (FENIX format)
+  "data" : {} //Resource requested data (FENIX format)
+}

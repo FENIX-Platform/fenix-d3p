@@ -1,0 +1,7 @@
+//Data processing component selector
+{
+  "name" : "", //Process id
+  "parameters" : {
+    //Parameters structure depends on the process
+  }
+}

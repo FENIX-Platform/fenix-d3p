@@ -1,0 +1,5 @@
+//Multiple fields domain
+{
+  "field" : {} //Allowed values domain
+  //...
+}

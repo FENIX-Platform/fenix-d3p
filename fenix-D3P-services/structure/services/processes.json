@@ -1,0 +1,15 @@
+{ //Process entity REST
+  "processes" : {
+    "{domain}": { //Domain resource uid
+      "POST": { //Create and activate a process instance (synchronous)
+        "body" : [], //Domain data preprocessing flow as a Process objects array
+        "return": {} //Process execution resulting data as a Resource object
+      },
+      "{process}": { //Process identification name
+        "GET": { //Shortcut to apply a simple process with no configuration parameters
+          "return": {} //Process execution resulting data as a Resource object
+        }
+      }
+    }
+  }
+}

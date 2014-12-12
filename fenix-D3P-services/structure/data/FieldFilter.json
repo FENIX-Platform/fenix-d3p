@@ -1,0 +1,37 @@
+//Silgle filed or column domain definition
+{ //The field used to define the domain depends on the domain data type
+
+  "ids" : [ //Enumeration of resources identification informations
+    {
+      "uid" : "",
+      "version" : ""
+    }
+  ],
+  "enumeration" : [""] //Enumeration of fixed string values
+
+  "time" : [ //Time periods list
+    {
+      "from" : 0, //Allowed number formats for from and to fields are: yyyy, yyyyMM, yyyyMMdd, yyyyMMddhhmmss, epoch in milliseconds
+      "to" : 0
+    }
+  ],
+
+  "codes" : [ //Codes grouped by codelist
+    {
+      "uid" : "", //Codelist uid
+      "version" : "", //Codelist version
+
+      "codes" : [""], //Fixed set of codelist's codes
+
+      "level" : 0, //Lowest codes level
+      "levels" : 0 //Traversing depth for codes children inclusion
+    }
+  ],
+
+  "contacts" : [ //List of responsible party filters
+    {
+      "role" : "", //responsible party role. Allowed values are: owner, distributor, other
+      "text" : "" //Text for the fulltext selection
+    }
+  ]
+}

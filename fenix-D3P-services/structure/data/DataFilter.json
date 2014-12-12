@@ -1,0 +1,5 @@
+//Domain rows and columns filter
+{
+  "rows" : {}, //Rows allowed content expressed as a FieldsFilter
+  "columns" : [""] //Allowed columns identification
+}

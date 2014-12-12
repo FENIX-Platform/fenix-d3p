@@ -8,6 +8,7 @@ public class DomainFilter {
 
     private StandardFilter resources;
     private DataFilter data;
+    private Collection<Process> flow;
 
     public StandardFilter getResources() {
         return resources;
@@ -23,5 +24,13 @@ public class DomainFilter {
 
     public void setData(DataFilter data) {
         this.data = data;
+    }
+
+    public Collection<Process> getFlow() {
+        return flow;
+    }
+
+    public void setFlow(Collection<Process> flow) {
+        this.flow = flow;
     }
 }

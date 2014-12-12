@@ -1,0 +1,28 @@
+{ //Domain entity REST
+  "domains" : {
+    "POST" : { //Create domain
+      "query parameters" : {
+        "timeout" : -1, //Force user access domain timeout to the specified value
+        "synch" : false  //Specify if the domain creation have to be synchronized with the response return
+      },
+      "body" : {}, //Filter over D3S managed resources data as a DomainFilter object
+      "return" : {} //Domain metadata and creation status as a DomainStatus object
+    },
+    "{uid}" : { //Domain resource uid
+      "GET" : { //Get domain status
+        "return" : {} //Domain metadata and creation status as a DomainStatus object
+      },
+      "PUT" : { //Force domain data refresh and can update timeout setting
+        "query parameters" : {
+          "timeout" : -1, //Force user access domain timeout to the specified value
+          "synch" : false  //Specify if the domain creation have to be synchronized with the response return
+        },
+        "body" : null,
+        "return" : {} //Domain metadata and creation status as a DomainStatus object
+      },
+      "DELETE" : { //Remove domain
+        "return" : {} //Domain metadata and creation status as a DomainStatus object
+      }
+    }
+  }
+}
