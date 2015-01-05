@@ -1,5 +1,6 @@
 package org.fao.fenix.d3p.dto;
 
+import org.fao.fenix.commons.find.dto.filter.DataFilter;
 import org.fao.fenix.commons.find.dto.filter.StandardFilter;
 
 import java.util.Collection;
