@@ -1,7 +1,7 @@
 package org.fao.fenix.d3p.dto;
 
 import org.fao.fenix.commons.msd.dto.templates.identification.MeIdentification;
-import org.fao.fenix.commons.msd.dto.templates.standardDsd.dataset.MeIdentificationDSDOnly;
+import org.fao.fenix.commons.msd.dto.templates.combined.dataset.MeIdentificationDSDOnly;
 import org.fao.fenix.d3p.dto.type.DomainCompletionStatus;
 
 import java.util.Collection;
