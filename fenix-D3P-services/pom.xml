@@ -23,7 +23,7 @@
 		</plugins>
 	</build>
 
-    <!-- PROFILES -->
+    <!-- PROFILES
     <profiles>
         <profile>
             <id>jboss</id>
@@ -43,7 +43,7 @@
             </dependencies>
         </profile>
     </profiles>
-
+    -->
 
 	<dependencies>
         
@@ -53,13 +53,13 @@
             <artifactId>fenix-D3P-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-	<!-- CORS support -->
+	<!-- CORS support
         <dependency>
             <groupId>org.fao.fenix</groupId>
             <artifactId>fenix-cross-domain</artifactId>
             <version>1.1</version>
         </dependency>
-
+    -->
 
     </dependencies>
 </project>

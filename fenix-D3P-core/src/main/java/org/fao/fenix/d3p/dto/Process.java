@@ -1,9 +1,11 @@
 package org.fao.fenix.d3p.dto;
 
-public class Process<T> {
+import java.util.Map;
+
+public class Process {
 
     private String name;
-    private T parameters;
+    private Map<String,Object> parameters;
 
 
 
@@ -14,7 +16,7 @@ public class Process<T> {
         this.name = name;
     }
 
-    public Process(String name, T parameters) {
+    public Process(String name, Map<String,Object> parameters) {
         this.name = name;
         this.parameters = parameters;
     }
@@ -29,11 +31,11 @@ public class Process<T> {
         this.name = name;
     }
 
-    public T getParameters() {
+    public Map<String,Object> getParameters() {
         return parameters;
     }
 
-    public void setParameters(T parameters) {
+    public void setParameters(Map<String,Object> parameters) {
         this.parameters = parameters;
     }
 }
