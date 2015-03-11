@@ -17,10 +17,32 @@ import java.util.Map;
 public class Processes {
     private @Context HttpServletRequest httpRequest;
 
-
+    /**
+     * Apply a process workflow to a domain or a cached resource.
+     * To store processes results to be consumed a second level cache is needed.
+     * No pagination will be available
+     * @param uid Source resource uid
+     * @param flow Processes ids and parameters
+     * @return Resource data
+     */
     @POST
-    @Path("{domain}")
-    public ResourceProxy apply(@PathParam("domain") String domainUid, Process[] flow) {
+    @Path("{uid}")
+    public ResourceProxy apply(@PathParam("uid") String uid, Process[] flow) {
+        return apply(uid,null,flow);
+    }
+
+    /**
+     * Apply a process workflow to a domain or a cached resource.
+     * To store processes results to be consumed a second level cache is needed.
+     * No pagination will be available
+     * @param uid Source resource uid
+     * @param version Source resource version
+     * @param flow Processes ids and parameters
+     * @return Resource data
+     */
+    @POST
+    @Path("{uid}/{version}")
+    public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow) {
         return null;
     }
 
