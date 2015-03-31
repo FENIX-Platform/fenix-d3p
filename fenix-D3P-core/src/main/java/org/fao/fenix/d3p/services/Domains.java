@@ -1,7 +1,7 @@
 package org.fao.fenix.d3p.services;
 
-import org.fao.fenix.d3p.dto.DomainFilter;
-import org.fao.fenix.d3p.dto.DomainStatus;
+import org.fao.fenix.commons.process.dto.DomainFilter;
+import org.fao.fenix.commons.process.dto.DomainStatus;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;

@@ -2,14 +2,12 @@ package org.fao.fenix.d3p.services;
 
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
 import org.fao.fenix.d3p.dto.*;
-import org.fao.fenix.d3p.dto.Process;
+import org.fao.fenix.commons.process.dto.Process;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import java.util.Collection;
-import java.util.Map;
 
 @Path("/processes")
 @Produces(MediaType.APPLICATION_JSON+"; charset=utf-8")

@@ -16,7 +16,7 @@
 				<artifactId>maven-war-plugin</artifactId>
 				<configuration>
 					<archive><addMavenDescriptor>false</addMavenDescriptor></archive>
-					<webXml>${project.basedir}/structure/web.xml</webXml>
+					<webXml>../fenix-D3P-core/structure/web.xml</webXml>
 					<warName>d3sp</warName>
 				</configuration>
 			</plugin>
