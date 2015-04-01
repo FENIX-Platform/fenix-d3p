@@ -1,7 +1,6 @@
 package org.fao.fenix.d3p.services;
 
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
-import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.commons.process.dto.Process;
 
 import javax.servlet.http.HttpServletRequest;
