@@ -13,13 +13,14 @@
     <modules>
         <module>fenix-D3P-core</module>
         <module>fenix-D3P-services</module>
+        <module>fenix-D3P-D3SConnector</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <resteasy.version>3.0.9.Final</resteasy.version>
         <jackson.version>2.4.4</jackson.version>
-        <orient.version>2.0.1</orient.version>
+        <orient.version>2.0.5</orient.version>
     </properties>
 
     <build>
