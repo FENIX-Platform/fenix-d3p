@@ -1,11 +1,11 @@
 package org.fao.fenix.d3p.services;
 
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
+import org.fao.fenix.commons.msd.dto.templates.export.combined.dataset.DSD;
 import org.fao.fenix.commons.msd.dto.templates.export.combined.dataset.MetadataDSD;
 import org.fao.fenix.commons.process.dto.Process;
 import org.fao.fenix.d3p.dao.StorageFactory;
 import org.fao.fenix.d3s.cache.dto.StoreStatus;
-import org.fao.fenix.d3s.cache.manager.CacheManagerFactory;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
@@ -50,11 +50,12 @@ public class Processes {
     @Path("{uid}/{version}")
     public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow) throws Exception {
         String id = getId(uid, version);
-        DatasetStorage storage = storageFactory.getInstance();
+        DatasetStorage storage = storageFactory.getDatasetStorage();
         StoreStatus resourceStatus = id!=null && storage!=null ? storage.loadMetadata(id) : null;
 
-        MetadataDSD metadata = (MetadataDSD)resourcesService.getMetadataByUID(uid, version, true, true, true);
 
+        DSD metadata = (DSD)resourcesService.getMetadataByUID(uid, version, false, true, true);
+        //id and metadata are the inputs for the flow
 
 
         return null;

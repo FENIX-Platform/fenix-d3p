@@ -11,8 +11,11 @@ public class StorageFactory {
     private @Inject CacheManagerFactory cacheFactory;
 
 
-    public DatasetStorage getInstance() throws Exception {
+    public DatasetStorage getDatasetStorage() throws Exception {
         CacheManager cacheManager = cacheFactory.getInstance(D3SCache.fixed.name());
         return (DatasetStorage)cacheManager.getStorage();
+    }
+    public CacheManager getCacheManager() throws Exception {
+        return cacheFactory.getInstance(D3SCache.fixed.name());
     }
 }
