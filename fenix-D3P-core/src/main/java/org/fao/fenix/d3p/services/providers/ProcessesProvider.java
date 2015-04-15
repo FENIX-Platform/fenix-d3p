@@ -1,6 +1,7 @@
 package org.fao.fenix.d3p.services.providers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.fao.fenix.commons.process.dto.Process;
 import org.fao.fenix.commons.utils.JSONUtils;
 import org.fao.fenix.d3p.process.ProcessFactory;
@@ -25,9 +26,21 @@ public class ProcessesProvider extends JsonProvider implements MessageBodyReader
 
     @Override
     public Process[] readFrom(Class<Process[]> aClass, Type type, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, String> multivaluedMap, InputStream inputStream) throws IOException, WebApplicationException {
-        JsonNode flowNodes = getRoot(readContent(inputStream));
-        //TODO
-        return new Process[0];
+        try {
+            return decodeProcesses((ArrayNode)getRoot(readContent(inputStream)));
+        } catch (Exception e) {
+            throw new WebApplicationException(e);
+        }
+    }
+
+    private Process[] decodeProcesses(ArrayNode sources) throws Exception {
+        int size = sources!=null ? sources.size() : 0;
+        Process[] processesData = new Process[size];
+
+        for (int i=0; i<size; i++)
+            processesData[i] = decodeProcess(sources.get(i));
+
+        return processesData;
     }
 
     private Process decodeProcess(JsonNode source) throws Exception {
