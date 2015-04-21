@@ -4,64 +4,73 @@ package org.fao.fenix.d3p.process;
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
-import org.fao.fenix.commons.process.dto.*;
+import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.TebleStep;
 import org.fao.fenix.d3s.cache.D3SCache;
-import org.fao.fenix.d3s.cache.dto.StoreStatus;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
-import org.fao.fenix.d3s.cache.manager.CacheManagerFactory;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
-import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.sql.Connection;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 public class FlowManager {
-    @Inject ProcessFactory factory;
-    @Inject CacheFactory cacheFactory;
+    private @Inject ProcessFactory factory;
+    private @Inject CacheFactory cacheFactory;
 
     public Resource<org.fao.fenix.commons.msd.dto.full.DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
-        if (metadata!=null) {
-            //Retrieve cache manager
-            CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(D3SCache.fixed);
-            if (cacheManager==null)
-                throw new UnsupportedOperationException("No cache available");
-            DatasetStorage cacheStorage = (DatasetStorage)cacheManager.getStorage();
-            Connection connection = cacheStorage.getConnection();
+        //Retrieve cache manager
+        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(D3SCache.fixed);
+        DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
+        Connection connection = cacheStorage!=null ? cacheStorage.getConnection() : null;
+        if (connection==null)
+            throw new UnsupportedOperationException("No cache available");
+
+        //Retrieve source information
+        String tableName = metadata!=null ? cacheStorage.getTableName(getId(metadata.getUid(), metadata.getVersion())) : null;
+        DSDDataset dsd = metadata!=null ? metadata.getDsd() : null;
+        if (tableName==null || dsd==null)
+            return null;
 
 
-            //Retrieve source information
-            DSDDataset dsd = metadata.getDsd();
-            StoreStatus tableStatus = cacheManager.status(metadata);
+        Stack<CachedProcess> disposableProcesses = new Stack<>();
+        Map<String, Step> steps = new HashMap<>();
+
+        //Create source step
+        Step result = new TebleStep();
+        result.setData(tableName);
+        result.setRid(tableName);
+        result.setDsd(dsd);
+        steps.put(result.getRid(), result);
+
+        try {
 
             //Run flow
-            String tableName = getId(metadata.getUid(), metadata.getVersion());
-            Step result = new TebleStep();
-            result.setData(tableName);
-            result.setRid(tableName);
-            result.setDsd(metadata.getDsd());
-            Map<String, Step> steps = new HashMap<>();
-            steps.put(result.getRid(),result);
-
             for (org.fao.fenix.commons.process.dto.Process processInfo : flow) {
                 Process process = factory.getInstance(processInfo.getName());
-                result = process.process(processInfo.getParameters(), getSources(processInfo, result, steps));
 
-                setRid(result, processInfo);
+                process.init(cacheStorage);
+                result = process.process(connection, processInfo.getParameters(), getSources(processInfo, result, steps));
+
+                if (process instanceof CachedProcess)
+                    disposableProcesses.push((CachedProcess)process);
                 steps.put(result.getRid(), result);
             }
 
-            //TODO retrieve resource from a Step
+            //Generate and return in-memory resource from the last step
+            return result.getResource(connection);
+        } finally {
+            for (CachedProcess process = disposableProcesses.pop(); process!=null; process = disposableProcesses.pop())
+                try {
+                    process.dispose(connection);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            connection.close();
         }
-        return null;
     }
-
 
 
     //Utils
@@ -70,14 +79,6 @@ public class FlowManager {
             return version!=null ? uid+'|'+version : uid;
         else
             return null;
-    }
-
-    private void setRid(Step step, org.fao.fenix.commons.process.dto.Process processInfo) {
-        String rid = processInfo!=null ? processInfo.getRid() : null;
-        rid = rid==null && step!=null ? step.getRid() : null;
-        rid = rid==null && processInfo!=null ? processInfo.getName() : null;
-
-        step.setRid(rid);
     }
 
     private Step[] getSources (org.fao.fenix.commons.process.dto.Process processInfo, Step lastStep, Map<String, Step> steps) throws Exception {

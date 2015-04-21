@@ -1,22 +1,29 @@
 package org.fao.fenix.d3p.dto;
 
+import org.fao.fenix.commons.msd.dto.data.Resource;
+import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.utils.database.DatabaseUtils;
+
+import javax.inject.Inject;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Collection;
+
 public class QueryStep extends Step<String> {
-    private boolean select;
     private Object[] params;
     private int[] types;
 
+    @Inject DatabaseUtils databaseUtils;
 
     @Override
     public StepType getType() {
         return StepType.query;
     }
 
-    public boolean isSelect() {
-        return select;
-    }
-
-    public void setSelect(boolean select) {
-        this.select = select;
+    @Override
+    public Collection<Object[]> getData(Connection connection) throws Exception {
+        return databaseUtils.getDataCollection(databaseUtils.fillStatement(connection.prepareStatement(getData()), getTypes(), getParams()).executeQuery());
     }
 
     public Object[] getParams() {
