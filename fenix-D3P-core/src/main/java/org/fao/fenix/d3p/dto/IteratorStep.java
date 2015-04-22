@@ -16,11 +16,8 @@ public class IteratorStep extends Step<Iterator<Object[]>> {
     }
 
     @Override
-    public Collection<Object[]> getData(Connection connection) throws Exception {
-        Collection<Object[]> data = new LinkedList<>();
-        for (Iterator<Object[]> rawData = getData(); rawData!=null && rawData.hasNext(); )
-            data.add(rawData.next());
-        return data;
+    public Iterator<Object[]> getData(Connection connection) throws Exception {
+        return getData();
     }
 
 

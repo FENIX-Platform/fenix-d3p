@@ -7,7 +7,7 @@ import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
-import org.fao.fenix.d3p.dto.TebleStep;
+import org.fao.fenix.d3p.dto.TableStep;
 import org.fao.fenix.d3s.cache.D3SCache;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
@@ -19,6 +19,7 @@ import java.util.*;
 public class FlowManager {
     private @Inject ProcessFactory factory;
     private @Inject CacheFactory cacheFactory;
+    private @Inject UIDUtils uidUtils;
 
     public Resource<org.fao.fenix.commons.msd.dto.full.DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
         //Retrieve cache manager
@@ -29,7 +30,7 @@ public class FlowManager {
             throw new UnsupportedOperationException("No cache available");
 
         //Retrieve source information
-        String tableName = metadata!=null ? cacheStorage.getTableName(getId(metadata.getUid(), metadata.getVersion())) : null;
+        String tableName = metadata!=null ? getId(metadata.getUid(), metadata.getVersion()) : null;
         DSDDataset dsd = metadata!=null ? metadata.getDsd() : null;
         if (tableName==null || dsd==null)
             return null;
@@ -39,7 +40,7 @@ public class FlowManager {
         Map<String, Step> steps = new HashMap<>();
 
         //Create source step
-        Step result = new TebleStep();
+        Step result = new TableStep();
         result.setData(tableName);
         result.setRid(tableName);
         result.setDsd(dsd);
@@ -53,6 +54,7 @@ public class FlowManager {
 
                 process.init(cacheStorage);
                 result = process.process(connection, processInfo.getParameters(), getSources(processInfo, result, steps));
+                setRid(result, processInfo);
 
                 if (process instanceof CachedProcess)
                     disposableProcesses.push((CachedProcess)process);
@@ -74,6 +76,13 @@ public class FlowManager {
 
 
     //Utils
+    private void setRid(Step step, org.fao.fenix.commons.process.dto.Process processInfo) {
+        if (step!=null && step.getRid()==null) {
+            String rid = processInfo!=null ? processInfo.getRid() : null;
+            step.setRid(rid==null ? uidUtils.getId() : null);
+        }
+    }
+
     private String getId(String uid, String version) {
         if (uid!=null)
             return version!=null ? uid+'|'+version : uid;

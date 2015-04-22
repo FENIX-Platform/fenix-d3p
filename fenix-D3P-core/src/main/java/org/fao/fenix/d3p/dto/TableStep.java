@@ -4,13 +4,16 @@ import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.templates.identification.DSDCodelist;
+import org.fao.fenix.commons.utils.database.DataIterator;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 
 import javax.inject.Inject;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.util.Collection;
+import java.util.Iterator;
 
-public class TebleStep extends Step<String> {
+public class TableStep extends Step<String> {
     @Inject DatabaseUtils databaseUtils;
 
     @Override
@@ -19,8 +22,9 @@ public class TebleStep extends Step<String> {
     }
 
     @Override
-    public Collection<Object[]> getData(Connection connection) throws Exception {
-        return databaseUtils.getDataCollection(connection.createStatement().executeQuery(getQuery()));
+    public Iterator<Object[]> getData(Connection connection) throws Exception {
+        ResultSet rawData = connection.createStatement().executeQuery(getQuery());
+        return new DataIterator(rawData, null, null, null);
     }
 
     //Utils
@@ -32,7 +36,7 @@ public class TebleStep extends Step<String> {
         return step;
     }
 
-    private String getQuery() {
+    public String getQuery() {
         StringBuilder query = new StringBuilder();
         for (DSDColumn column : getDsd().getColumns())
             query.append(',').append(column.getId());

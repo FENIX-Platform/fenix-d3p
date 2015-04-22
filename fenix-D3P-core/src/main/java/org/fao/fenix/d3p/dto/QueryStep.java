@@ -2,6 +2,7 @@ package org.fao.fenix.d3p.dto;
 
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.utils.database.DataIterator;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 
 import javax.inject.Inject;
@@ -9,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Collection;
+import java.util.Iterator;
 
 public class QueryStep extends Step<String> {
     private Object[] params;
@@ -22,8 +24,9 @@ public class QueryStep extends Step<String> {
     }
 
     @Override
-    public Collection<Object[]> getData(Connection connection) throws Exception {
-        return databaseUtils.getDataCollection(databaseUtils.fillStatement(connection.prepareStatement(getData()), getTypes(), getParams()).executeQuery());
+    public Iterator<Object[]> getData(Connection connection) throws Exception {
+        ResultSet rawData = databaseUtils.fillStatement(connection.prepareStatement(getData()), getTypes(), getParams()).executeQuery();
+        return new DataIterator(rawData, null, null, null);
     }
 
     public Object[] getParams() {

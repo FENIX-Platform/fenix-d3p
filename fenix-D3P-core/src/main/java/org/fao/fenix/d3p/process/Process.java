@@ -33,12 +33,15 @@ public abstract class Process <T> {
      * @param params Current process external parameters.
      * @return
      */
-    public abstract Step process(Connection connection, T params, Step ... sourceStep);
+    public abstract Step process(Connection connection, T params, Step ... sourceStep) throws Exception;
 
 
     //UTILS
     protected String getRandomTmpTableName() {
-        return cacheStorage.getTemporaryTableName(uidUtils.getId());
+        return "TMP_"+uidUtils.getId();
+    }
+    protected DatasetStorage getCacheStorage() {
+        return cacheStorage;
     }
 
 }

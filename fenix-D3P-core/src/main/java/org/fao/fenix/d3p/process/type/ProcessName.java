@@ -5,6 +5,6 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-public @interface Process {
-    String name() default "";
+public @interface ProcessName {
+    String value() default "";
 }

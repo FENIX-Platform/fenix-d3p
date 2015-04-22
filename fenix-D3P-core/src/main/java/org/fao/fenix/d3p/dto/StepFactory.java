@@ -11,7 +11,7 @@ public class StepFactory {
             switch (type) {
                 case iterator: return instance.select(IteratorStep.class).iterator().next();
                 case query: return instance.select(QueryStep.class).iterator().next();
-                case table: return instance.select(TebleStep.class).iterator().next();
+                case table: return instance.select(TableStep.class).iterator().next();
             }
         return null;
     }
