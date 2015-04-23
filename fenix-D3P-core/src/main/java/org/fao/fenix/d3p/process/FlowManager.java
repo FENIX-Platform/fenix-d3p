@@ -64,12 +64,13 @@ public class FlowManager {
             //Generate and return in-memory resource from the last step
             return result.getResource(connection);
         } finally {
-            for (CachedProcess process = disposableProcesses.pop(); process!=null; process = disposableProcesses.pop())
-                try {
-                    process.dispose(connection);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+            if (disposableProcesses.size()>0)
+                for (CachedProcess process = disposableProcesses.pop(); process != null; process = disposableProcesses.pop())
+                    try {
+                        process.dispose(connection);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
             connection.close();
         }
     }

@@ -19,12 +19,13 @@ public class ProcessFactory {
     public void init(String basePackage) {
         Reflections reflections = new Reflections(basePackage);
         Set<Class<? extends Process>> subTypes = reflections.getSubTypesOf(Process.class);
+        subTypes.addAll(reflections.getSubTypesOf(CachedProcess.class));
         if (subTypes!=null)
             for (Class<? extends Process> processClass : subTypes) {
                 //Retrieve name
                 ProcessName annotation = processClass.getAnnotation(ProcessName.class);
                 String name = annotation!=null ? annotation.value() : null;
-                name = name==null ? processClass.getSimpleName() : null;
+                name = name==null ? processClass.getSimpleName() : name;
                 //Maintain the class
                 processesClass.put(name, processClass);
             }
