@@ -5,21 +5,21 @@ import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.utils.Order;
-import org.fao.fenix.d3p.dto.IteratorStep;
-import org.fao.fenix.d3p.dto.Step;
-import org.fao.fenix.d3p.dto.TableStep;
+import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.d3p.process.dto.SimpleFilterParams;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.dto.dataset.Type;
 
+import javax.inject.Inject;
 import java.sql.Connection;
 import java.sql.Types;
 import java.util.*;
 
 @ProcessName("simpleFilter")
 public class DefaultFilter extends org.fao.fenix.d3p.process.Process<SimpleFilterParams> {
+    private @Inject StepFactory stepFactory;
 
     @Override
     public Step process(Connection connection, SimpleFilterParams params, Step... sourceStep) throws Exception {
@@ -30,7 +30,7 @@ public class DefaultFilter extends org.fao.fenix.d3p.process.Process<SimpleFilte
             DataFilter filter = params!=null ? params.getFilter() : null;
             Order order = params!=null ? params.getOrder() : null;
 
-            IteratorStep step = new IteratorStep();
+            IteratorStep step = (IteratorStep)stepFactory.getInstance(StepType.iterator);
             step.setDsd(filter(dsd, filter));
             step.setData(getCacheStorage().load(order,null,filter,new Table(source.getData(), source.getDsd())));
             return step;

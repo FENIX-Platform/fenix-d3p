@@ -7,6 +7,8 @@ import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
+import org.fao.fenix.d3p.dto.StepFactory;
+import org.fao.fenix.d3p.dto.StepType;
 import org.fao.fenix.d3p.dto.TableStep;
 import org.fao.fenix.d3s.cache.D3SCache;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
@@ -17,6 +19,7 @@ import java.sql.Connection;
 import java.util.*;
 
 public class FlowManager {
+    private @Inject StepFactory stepFactory;
     private @Inject ProcessFactory factory;
     private @Inject CacheFactory cacheFactory;
     private @Inject UIDUtils uidUtils;
@@ -40,7 +43,7 @@ public class FlowManager {
         Map<String, Step> steps = new HashMap<>();
 
         //Create source step
-        Step result = new TableStep();
+        Step result = stepFactory.getInstance(StepType.table);
         result.setData(tableName);
         result.setRid(tableName);
         result.setDsd(dsd);
@@ -64,13 +67,12 @@ public class FlowManager {
             //Generate and return in-memory resource from the last step
             return result.getResource(connection);
         } finally {
-            if (disposableProcesses.size()>0)
-                for (CachedProcess process = disposableProcesses.pop(); process != null; process = disposableProcesses.pop())
-                    try {
-                        process.dispose(connection);
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
+            for (CachedProcess process = disposableProcesses.pop(); process != null && disposableProcesses.size()>0; process = disposableProcesses.pop())
+                try {
+                    process.dispose(connection);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             connection.close();
         }
     }

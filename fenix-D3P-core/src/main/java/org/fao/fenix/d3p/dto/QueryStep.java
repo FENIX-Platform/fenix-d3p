@@ -16,7 +16,7 @@ public class QueryStep extends Step<String> {
     private Object[] params;
     private int[] types;
 
-    @Inject DatabaseUtils databaseUtils;
+    private @Inject DatabaseUtils databaseUtils;
 
     @Override
     public StepType getType() {

@@ -24,7 +24,8 @@ public abstract class Process <T> {
      * @return Parameters Java type
      */
     public Type getParametersType() {
-        return ((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        Type genericSuperClass = this.getClass().getGenericSuperclass();
+        return genericSuperClass!=null && genericSuperClass instanceof ParameterizedType ? ((ParameterizedType)genericSuperClass).getActualTypeArguments()[0] : null;
     }
 
     /**

@@ -68,11 +68,12 @@ public class Processes {
         //Apply flow
         Resource<DSDDataset,Object[]> result = flowManager.process(metadata, flow);
         Collection<Object[]> data = result!=null ? result.getData() : null;
+        org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = result!=null ? ResponseBeanFactory.getInstance(result.getMetadata(), org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class) : null;
+        Long size = data!=null ? (long)data.size() : null;
 
         //Return proxy to the resulting data
-        Long size = data!=null ? (long)data.size() : null;
         return new ResourceProxy(
-                ResponseBeanFactory.getInstance(metadata, org.fao.fenix.commons.msd.dto.templates.standard.combined.DSD.class),
+                metadataProxy,
                 data, null, null, size
         );
     }

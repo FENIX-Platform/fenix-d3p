@@ -6,10 +6,7 @@ import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
-import org.fao.fenix.d3p.dto.IteratorStep;
-import org.fao.fenix.d3p.dto.QueryStep;
-import org.fao.fenix.d3p.dto.Step;
-import org.fao.fenix.d3p.dto.TableStep;
+import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
@@ -27,7 +24,8 @@ import java.util.Map;
 
 @ProcessName("filter")
 public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
-    @Inject DatabaseUtils databaseUtils;
+    private @Inject DatabaseUtils databaseUtils;
+    private @Inject StepFactory stepFactory;
 
     @Override
     public Step process(Connection connection, DataFilter params, Step... sourceStep) throws Exception {
@@ -39,7 +37,7 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             Collection<Object> queryParameters = new LinkedList<>();
             String query = createCacheFilterQuery(null, params, new Table(source.getData(), source.getDsd()), queryParameters);
             //Generate and return query step
-            QueryStep step = new QueryStep();
+            QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
             step.setDsd(filter(dsd, params));
             step.setData(query);
             step.setParams(queryParameters.toArray());
@@ -88,7 +86,7 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         }
 
         //Add source table
-        query.append(" FROM ").append(table.getTableName());
+        query.append(" FROM ").append(getCacheStorage().getTableName(table.getTableName()));
         //Add where condition
         StandardFilter rowsFilter = filter!=null ? filter.getRows() : null;
         if (rowsFilter!=null && rowsFilter.size()>0) {
