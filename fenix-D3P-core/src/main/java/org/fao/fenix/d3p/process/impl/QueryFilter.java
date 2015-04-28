@@ -29,13 +29,18 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
 
     @Override
     public Step process(Connection connection, DataFilter params, Step... sourceStep) throws Exception {
-        TableStep source = sourceStep!=null && sourceStep.length==1 && sourceStep[0] instanceof TableStep ? (TableStep)sourceStep[0] : null;
-        String tableName = source!=null ? source.getData() : null;
+        Step source = sourceStep!=null && sourceStep.length==1 ? (TableStep)sourceStep[0] : null;
+        StepType type = source!=null ? source.getType() : null;
+        if (type==null || (type!=StepType.table && type!=StepType.query))
+            throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
+        String tableName = source!=null ? (String)source.getData() : null;
         DSDDataset dsd = source!=null ? source.getDsd() : null;
         if (tableName!=null && dsd!=null) {
+            //Normalize table name
+            tableName = type==StepType.table ? getCacheStorage().getTableName(tableName) : '('+tableName+')';
             //Create query
             Collection<Object> queryParameters = new LinkedList<>();
-            String query = createCacheFilterQuery(null, params, new Table(source.getData(), source.getDsd()), queryParameters);
+            String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters);
             //Generate and return query step
             QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
             step.setDsd(filter(dsd, params));
@@ -57,10 +62,11 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             for (DSDColumn column : source.getColumns())
                 if (columnsName.contains(column.getId()))
                     columns.add(column);
+                else if (column.getKey())
+                    throw new UnsupportedOperationException("Cannot remove key columns from selection");
             dsd.setColumns(columns);
         } else
             dsd.setColumns(source.getColumns());
-        //TODO filter distinct values based on rows filter (no cloning needed)
         return dsd;
     }
 
@@ -86,7 +92,7 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         }
 
         //Add source table
-        query.append(" FROM ").append(getCacheStorage().getTableName(table.getTableName()));
+        query.append(" FROM ").append(table.getTableName());
         //Add where condition
         StandardFilter rowsFilter = filter!=null ? filter.getRows() : null;
         if (rowsFilter!=null && rowsFilter.size()>0) {

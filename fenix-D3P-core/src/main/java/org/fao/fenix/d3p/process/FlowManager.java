@@ -67,9 +67,9 @@ public class FlowManager {
             //Generate and return in-memory resource from the last step
             return result.getResource(connection);
         } finally {
-            for (CachedProcess process = disposableProcesses.pop(); process != null && disposableProcesses.size()>0; process = disposableProcesses.pop())
+            for (int size = disposableProcesses.size(); size>0; size--)
                 try {
-                    process.dispose(connection);
+                    disposableProcesses.pop().dispose(connection);
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }

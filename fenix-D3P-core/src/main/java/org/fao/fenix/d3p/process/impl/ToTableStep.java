@@ -62,6 +62,5 @@ public class ToTableStep extends org.fao.fenix.d3p.process.CachedProcess {
     @Override
     public void dispose(Connection connection) throws Exception {
         getCacheStorage().delete(tableName);
-        //connection.createStatement().executeUpdate("drop table "+tableName);
     }
 }

@@ -49,10 +49,11 @@ public class DefaultFilter extends org.fao.fenix.d3p.process.Process<SimpleFilte
             for (DSDColumn column : source.getColumns())
                 if (columnsName.contains(column.getId()))
                     columns.add(column);
+                else if (column.getKey())
+                    throw new UnsupportedOperationException("Cannot remove key columns from selection");
             dsd.setColumns(columns);
         } else
             dsd.setColumns(source.getColumns());
-        //TODO filter distinct values based on rows filter (no cloning needed)
         return dsd;
     }
 
