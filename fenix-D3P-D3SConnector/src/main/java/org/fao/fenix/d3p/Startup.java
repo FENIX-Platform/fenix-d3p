@@ -2,6 +2,7 @@ package org.fao.fenix.d3p;
 
 import org.fao.fenix.commons.utils.Properties;
 import org.fao.fenix.d3p.process.ProcessFactory;
+import org.fao.fenix.d3p.process.impl.group.RulesFactory;
 
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
@@ -14,6 +15,7 @@ import java.util.Collections;
 @WebListener
 public class Startup  implements ServletContextListener {
     private @Inject ProcessFactory processFactory;
+    private @Inject RulesFactory rulesFactory;
 
 
     @Override
@@ -27,6 +29,7 @@ public class Startup  implements ServletContextListener {
 
             //Init modules
             processFactory.init(getInitParameter("process.impl.package"));
+            rulesFactory.init(getInitParameter("rules.impl.package"));
 
         } catch (Exception e) {
             throw new RuntimeException(e);

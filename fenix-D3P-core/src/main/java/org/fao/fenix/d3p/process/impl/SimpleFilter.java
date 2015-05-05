@@ -18,7 +18,7 @@ import java.sql.Types;
 import java.util.*;
 
 @ProcessName("simpleFilter")
-public class DefaultFilter extends org.fao.fenix.d3p.process.Process<SimpleFilterParams> {
+public class SimpleFilter extends org.fao.fenix.d3p.process.Process<SimpleFilterParams> {
     private @Inject StepFactory stepFactory;
 
     @Override

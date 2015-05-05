@@ -16,7 +16,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 @ProcessName("distinct")
-public class DistinctFilter extends org.fao.fenix.d3p.process.Process {
+public class DistinctUpdate extends org.fao.fenix.d3p.process.Process {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
 

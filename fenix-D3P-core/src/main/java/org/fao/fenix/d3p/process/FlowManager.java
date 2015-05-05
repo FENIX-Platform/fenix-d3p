@@ -9,7 +9,6 @@ import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
-import org.fao.fenix.d3p.dto.TableStep;
 import org.fao.fenix.d3s.cache.D3SCache;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
@@ -39,7 +38,7 @@ public class FlowManager {
             return null;
 
 
-        Stack<CachedProcess> disposableProcesses = new Stack<>();
+        Stack<StatefulProcess> disposableProcesses = new Stack<>();
         Map<String, Step> steps = new HashMap<>();
 
         //Create source step
@@ -59,8 +58,8 @@ public class FlowManager {
                 result = process.process(connection, processInfo.getParameters(), getSources(processInfo, result, steps));
                 setRid(result, processInfo);
 
-                if (process instanceof CachedProcess)
-                    disposableProcesses.push((CachedProcess)process);
+                if (process instanceof StatefulProcess)
+                    disposableProcesses.push((StatefulProcess)process);
                 steps.put(result.getRid(), result);
             }
 

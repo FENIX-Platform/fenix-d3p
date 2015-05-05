@@ -3,6 +3,7 @@ package org.fao.fenix.d3p.process.impl;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
+import org.fao.fenix.d3p.process.StatefulProcess;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
@@ -12,7 +13,7 @@ import java.sql.Connection;
 import java.util.Iterator;
 
 @ProcessName("asTable")
-public class ToTableStep extends org.fao.fenix.d3p.process.CachedProcess {
+public class ToTableStep extends StatefulProcess {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
 

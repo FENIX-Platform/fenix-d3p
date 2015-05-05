@@ -13,12 +13,12 @@ import java.sql.Connection;
 import java.util.Collection;
 
 @ProcessName("order")
-public class OrderFilter extends org.fao.fenix.d3p.process.Process<Order> {
+public class Order extends org.fao.fenix.d3p.process.Process<org.fao.fenix.commons.utils.Order> {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
 
     @Override
-    public Step process(Connection connection, Order params, Step... sourceStep) throws Exception {
+    public Step process(Connection connection, org.fao.fenix.commons.utils.Order params, Step... sourceStep) throws Exception {
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         if (source==null)
             return null;
@@ -49,7 +49,7 @@ public class OrderFilter extends org.fao.fenix.d3p.process.Process<Order> {
     }
 
 
-    private String createOrderQuery(Order ordering, String from, String[] columnsName) throws Exception {
+    private String createOrderQuery(org.fao.fenix.commons.utils.Order ordering, String from, String[] columnsName) throws Exception {
         StringBuilder query = new StringBuilder("SELECT * FROM ").append(from);
         if (ordering!=null)
             query.append(ordering.toH2SQL(columnsName));
