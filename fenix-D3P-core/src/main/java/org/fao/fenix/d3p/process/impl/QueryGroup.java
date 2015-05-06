@@ -5,6 +5,7 @@ import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.utils.Order;
+import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.d3p.process.dto.Aggregation;
@@ -17,10 +18,7 @@ import org.fao.fenix.d3s.cache.dto.dataset.Type;
 
 import javax.inject.Inject;
 import java.sql.Connection;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 @ProcessName("group")
 public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams> {
@@ -28,6 +26,7 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
     private @Inject RulesFactory rulesFactory;
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
+    private @Inject UIDUtils uidUtils;
 
     private String pid;
 
@@ -36,19 +35,48 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
         rulesFactory.delRule(pid);
     }
 
+    private String createAggregationQuerySegment(String ruleId, Aggregation aggregation) {
+        //define aggregation columns
+        String[] columns;
+        if (ruleId!=null) { //add rule ID as the first parameter for custom aggregation functions
+            columns = new String[aggregation.getColumns().length+1];
+            int i=1;
+            for (String column : aggregation.getColumns())
+                columns[i++] = column;
+            columns[0] = ruleId;
+        } else
+            columns = aggregation.getColumns();
+        //Create query segment
+        StringBuilder query = new StringBuilder(aggregation.getRule());
+        if (query.indexOf("(")<0) {//if the rule contains only the name
+            query.append('(');
+            for (String column : columns)
+                query.append(column).append(',');
+            query.setCharAt(query.length()-1,')');
+        } //else the query segment is the one specified into the rule fileld
+        //Return query segment
+        return query.toString();
+    }
+
     @Override
     public Step process(Connection connection, GroupParams params, Step... sourceStep) throws Exception {
+        String pid = uidUtils.getId();
+        //Retrieve source informations
         Step source = sourceStep!=null && sourceStep.length==1 ? (TableStep)sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
         String tableName = source!=null ? (String)source.getData() : null;
         DSDDataset dsd = source!=null ? source.getDsd() : null;
-
+        //Define groups rule
         Map<String, String> groups = new HashMap<>();
-        String pid = null;//TODO
-        for (Aggregation aggregation : params.getAggregations())
-            groups.put(aggregation.getCid(), rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns()));
+        for (Aggregation aggregation : params.getAggregations()) {
+            String ruleId = rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns());
+            groups.put(aggregation.getCid(), createAggregationQuerySegment(ruleId, aggregation));
+        }
+        //Create group query
+
+
 
         return null;
 /*
