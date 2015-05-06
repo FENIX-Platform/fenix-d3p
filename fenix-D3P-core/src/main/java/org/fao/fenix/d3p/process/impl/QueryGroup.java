@@ -50,8 +50,8 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
         for (Aggregation aggregation : params.getAggregations())
             groups.put(aggregation.getCid(), rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns()));
 
-
-
+        return null;
+/*
 
 
 
@@ -69,7 +69,7 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
             step.setParams(queryParameters.toArray());
             return step;
         } else
-            throw new Exception ("Source step for data filtering is unavailable or incomplete.");
+            throw new Exception ("Source step for data filtering is unavailable or incomplete.");    */
     }
 
     private DSDDataset filter (DSDDataset source, DataFilter filter) {
