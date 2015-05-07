@@ -32,7 +32,7 @@ public class Startup  implements ServletContextListener {
             rulesFactory.init(getInitParameter("rules.impl.package"));
 
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.err.println("D3P initialization error: "+e.getMessage());
         }
     }
 

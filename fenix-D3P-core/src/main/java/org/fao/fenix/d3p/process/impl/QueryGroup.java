@@ -35,29 +35,6 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
         rulesFactory.delRule(pid);
     }
 
-    private String createAggregationQuerySegment(String ruleId, Aggregation aggregation) {
-        //define aggregation columns
-        String[] columns;
-        if (ruleId!=null) { //add rule ID as the first parameter for custom aggregation functions
-            columns = new String[aggregation.getColumns().length+1];
-            int i=1;
-            for (String column : aggregation.getColumns())
-                columns[i++] = column;
-            columns[0] = ruleId;
-        } else
-            columns = aggregation.getColumns();
-        //Create query segment
-        StringBuilder query = new StringBuilder(aggregation.getRule());
-        if (query.indexOf("(")<0) {//if the rule contains only the name
-            query.append('(');
-            for (String column : columns)
-                query.append(column).append(',');
-            query.setCharAt(query.length()-1,')');
-        } //else the query segment is the one specified into the rule fileld
-        //Return query segment
-        return query.toString();
-    }
-
     @Override
     public Step process(Connection connection, GroupParams params, Step... sourceStep) throws Exception {
         String pid = uidUtils.getId();
@@ -99,6 +76,31 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
         } else
             throw new Exception ("Source step for data filtering is unavailable or incomplete.");    */
     }
+
+    private String createAggregationQuerySegment(String ruleId, Aggregation aggregation) {
+        //define aggregation columns
+        String[] columns;
+        if (ruleId!=null) { //add rule ID as the first parameter for custom aggregation functions
+            columns = new String[aggregation.getColumns().length+1];
+            int i=1;
+            for (String column : aggregation.getColumns())
+                columns[i++] = column;
+            columns[0] = ruleId;
+        } else
+            columns = aggregation.getColumns();
+        //Create query segment
+        StringBuilder query = new StringBuilder(aggregation.getRule());
+        if (query.indexOf("(")<0) {//if the rule contains only the name
+            query.append('(');
+            for (String column : columns)
+                query.append(column).append(',');
+            query.setCharAt(query.length()-1,')');
+        } //else the query segment is the one specified into the rule fileld
+        //Return query segment
+        return query.toString();
+    }
+
+
 
     private DSDDataset filter (DSDDataset source, DataFilter filter) {
         DSDDataset dsd = new DSDDataset();
