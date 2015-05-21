@@ -53,19 +53,23 @@ public class FlowManager {
             //Run flow
             for (org.fao.fenix.commons.process.dto.Process processInfo : flow) {
                 Process process = factory.getInstance(processInfo.getName());
-
                 process.init(cacheStorage);
+                if (process instanceof StatefulProcess)
+                    disposableProcesses.push((StatefulProcess)process);
+
                 result = process.process(connection, processInfo.getParameters(), getSources(processInfo, result, steps));
                 setRid(result, processInfo);
 
-                if (process instanceof StatefulProcess)
-                    disposableProcesses.push((StatefulProcess)process);
                 steps.put(result.getRid(), result);
             }
 
             //Generate and return in-memory resource from the last step
             return result.getResource(connection);
         } finally {
+            //Close data retrieve connection to unlock tables
+            connection.close();
+            //Dispose cached steps
+            connection = cacheStorage.getConnection();
             for (int size = disposableProcesses.size(); size>0; size--)
                 try {
                     disposableProcesses.pop().dispose(connection);

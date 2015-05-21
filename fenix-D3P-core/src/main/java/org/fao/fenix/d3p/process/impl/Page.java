@@ -20,8 +20,8 @@ public class Page extends org.fao.fenix.d3p.process.Process<org.fao.fenix.common
         if (source==null)
             return null;
         StepType sourceType = source.getType();
-        if (sourceType!=StepType.table)
-            throw new UnsupportedOperationException("Unsupported source step type. Only 'table' step is supported");
+        if (sourceType==StepType.iterator)
+            throw new UnsupportedOperationException("Unsupported source step type. Only 'table' and 'query' step are supported");
 
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(source.getDsd());
@@ -39,8 +39,10 @@ public class Page extends org.fao.fenix.d3p.process.Process<org.fao.fenix.common
 
     private String createPageQuery(org.fao.fenix.commons.utils.Page paging, String from) throws Exception {
         StringBuilder query = new StringBuilder("SELECT * FROM ").append(from);
-        if (paging!=null)
+        if (paging!=null) {
+            paging.init();
             query.append(paging.toH2SQL());
+        }
         return query.toString();
     }
 

@@ -67,7 +67,7 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
             int i=1;
             for (String column : aggregation.getColumns())
                 columns[i++] = column;
-            columns[0] = ruleId;
+            columns[0] = '\''+ruleId+'\'';
         } else
             columns = aggregation.getColumns();
         //Create query segment
@@ -95,7 +95,6 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
                 columns.add(column);
             }
         }
-        //TODO clean distinct values
         source.setColumns(columns);
     }
 

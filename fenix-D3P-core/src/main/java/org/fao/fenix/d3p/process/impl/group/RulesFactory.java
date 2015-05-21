@@ -42,7 +42,7 @@ public class RulesFactory {
         return null;
     }
 
-    public Rule getRule(String id) {
+    public static Rule getRule(String id) {
         int separatorIndex = id!=null ? id.indexOf("@@@") : -1;
         String pid = separatorIndex>0 ? id.substring(0, separatorIndex) : null;
         String cid = separatorIndex>0 ? id.substring(separatorIndex+3) : null;
