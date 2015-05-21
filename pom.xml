@@ -12,7 +12,6 @@
 
     <modules>
         <module>fenix-D3P-core</module>
-        <module>fenix-D3P-services</module>
         <module>fenix-D3P-D3SConnector</module>
     </modules>
 

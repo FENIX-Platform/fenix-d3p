@@ -4,6 +4,7 @@ package org.fao.fenix.d3p.process;
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
@@ -12,6 +13,7 @@ import org.fao.fenix.d3p.dto.StepType;
 import org.fao.fenix.d3s.cache.D3SCache;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
@@ -22,6 +24,7 @@ public class FlowManager {
     private @Inject ProcessFactory factory;
     private @Inject CacheFactory cacheFactory;
     private @Inject UIDUtils uidUtils;
+
 
     public Resource<org.fao.fenix.commons.msd.dto.full.DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
         //Retrieve cache manager
@@ -42,10 +45,11 @@ public class FlowManager {
         Map<String, Step> steps = new HashMap<>();
 
         //Create source step
+        Language[] languages = DatabaseStandards.getLanguageInfo();
         Step result = stepFactory.getInstance(StepType.table);
         result.setData(tableName);
         result.setRid(tableName);
-        result.setDsd(dsd);
+        result.setDsd(languages!=null ? dsd.extend(languages) : dsd);
         steps.put(result.getRid(), result);
 
         try {

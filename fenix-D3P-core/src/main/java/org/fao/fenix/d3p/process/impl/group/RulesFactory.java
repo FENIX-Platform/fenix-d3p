@@ -15,6 +15,7 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.io.File;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -110,8 +111,12 @@ public class RulesFactory {
             throw new UnsupportedOperationException("No cache available");
 
         try {
-            for (Map.Entry<String, Class<? extends Rule>> rulesClassEntry : rulesClass.entrySet())
-                connection.createStatement().execute("CREATE AGGREGATE " + rulesClassEntry.getKey() + " FOR \"" + rulesClassEntry.getValue().getName() + '"');
+            Statement statement = connection.createStatement();
+            for (Map.Entry<String, Class<? extends Rule>> rulesClassEntry : rulesClass.entrySet()) {
+                statement.addBatch("DROP AGGREGATE IF EXISTS " + rulesClassEntry.getKey());
+                statement.addBatch("CREATE AGGREGATE " + rulesClassEntry.getKey() + " FOR \"" + rulesClassEntry.getValue().getName() + '"');
+            }
+            statement.executeBatch();
         } finally {
             connection.close();
         }

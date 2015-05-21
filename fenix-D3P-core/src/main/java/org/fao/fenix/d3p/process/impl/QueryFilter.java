@@ -4,23 +4,24 @@ package org.fao.fenix.d3p.process.impl;
 import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
+import org.fao.fenix.d3p.process.dto.Aggregation;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.dto.dataset.Type;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Types;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 @ProcessName("filter")
 public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
@@ -36,6 +37,17 @@ public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         String tableName = source!=null ? (String)source.getData() : null;
         DSDDataset dsd = source!=null ? source.getDsd() : null;
         if (tableName!=null && dsd!=null) {
+            //Append label aggregations if needed
+            Collection<String> columnsName = params.getColumns();
+            Language[] languages = DatabaseStandards.getLanguageInfo();
+            if (languages!=null && languages.length>0 && columnsName!=null && columnsName.size()>0)
+                for (DSDColumn column : dsd.getColumns())
+                    if ((column.getDataType()== DataType.code || column.getDataType()==DataType.customCode) && columnsName.contains(column.getId()))
+                        for (Language l : languages) {
+                            String id = column.getId() + '_' + l.getCode();
+                            if (!columnsName.contains(id))
+                                columnsName.add(id);
+                        }
             //Normalize table name
             tableName = type==StepType.table ? getCacheStorage().getTableName(tableName) : '('+tableName+')';
             //Create query

@@ -3,6 +3,8 @@ package org.fao.fenix.d3p.process.impl;
 
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
@@ -10,6 +12,7 @@ import org.fao.fenix.d3p.process.dto.Aggregation;
 import org.fao.fenix.d3p.process.dto.GroupParams;
 import org.fao.fenix.d3p.process.impl.group.RulesFactory;
 import org.fao.fenix.d3p.process.type.ProcessName;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
@@ -42,16 +45,28 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
         if (type==StepType.table)
             sourceData = getCacheStorage().getTableName(sourceData);
         DSDDataset dsd = source.getDsd();
+        Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
+        //Append label aggregations if needed
+        Collection<Aggregation> aggregations = new LinkedList<>(Arrays.asList(params.getAggregations()));
+        Language[] languages = DatabaseStandards.getLanguageInfo();
+        if (languages!=null && languages.length>0)
+            for (DSDColumn column : dsd.getColumns())
+                if ((column.getDataType()== DataType.code || column.getDataType()==DataType.customCode) && groupsKey.contains(column.getId()))
+                    for (Language l : languages) {
+                        Aggregation a = new Aggregation();
+                        a.setRule("FIRST");
+                        a.setColumns(new String[]{column.getId() + '_' + l.getCode()});
+                        aggregations.add(a);
+                    }
         //Define groups rule
         Map<String, String> groups = new HashMap<>();
-        for (Aggregation aggregation : params.getAggregations()) {
+        for (Aggregation aggregation : aggregations) {
             String ruleId = rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns());
             groups.put(aggregation.getCid(), createAggregationQuerySegment(ruleId, aggregation));
         }
         //Create group query and prepare dsd
-        Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
         String query = createGroupQuery(groups, groupsKey, dsd, sourceData);
-        filter(dsd, groups, groupsKey);
+        dsd = filter(dsd, groups, groupsKey);
         //Return correspondent "query" step
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
@@ -84,7 +99,11 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
 
 
 
-    private void filter (DSDDataset source, Map<String,String> groups, Set<String> groupKeys) {
+    private DSDDataset filter (DSDDataset source, Map<String,String> groups, Set<String> groupKeys) {
+        DSDDataset dsd = new DSDDataset();
+        dsd.setAggregationRules(source.getAggregationRules());
+        dsd.setContextSystem("D3P");
+        //Select columns
         Collection<DSDColumn> columns = new LinkedList<>();
         for (DSDColumn column : source.getColumns()) {
             if (groupKeys.contains(column.getId())) {
@@ -95,7 +114,13 @@ public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupP
                 columns.add(column);
             }
         }
-        source.setColumns(columns);
+        dsd.setColumns(columns);
+        //Support labels into DSD
+        Language[] languages = DatabaseStandards.getLanguageInfo();
+        if (languages!=null && languages.length>0)
+            dsd.extend(languages);
+        //Return dsd
+        return dsd;
     }
 
     private String createGroupQuery(Map<String,String> groups, Set<String> groupKeys, DSDDataset dsd, String source) throws Exception {

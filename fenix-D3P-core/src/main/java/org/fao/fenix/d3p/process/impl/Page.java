@@ -20,7 +20,7 @@ public class Page extends org.fao.fenix.d3p.process.Process<org.fao.fenix.common
         if (source==null)
             return null;
         StepType sourceType = source.getType();
-        if (sourceType==StepType.iterator)
+        if (sourceType==null || (sourceType!=StepType.table && sourceType!=StepType.query))
             throw new UnsupportedOperationException("Unsupported source step type. Only 'table' and 'query' step are supported");
 
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
