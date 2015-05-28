@@ -1,10 +1,8 @@
 package org.fao.fenix.d3p.process.impl.group;
 
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
-import org.fao.fenix.d3p.process.impl.QueryGroup;
 import org.h2.api.AggregateFunction;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;

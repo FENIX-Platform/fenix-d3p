@@ -19,7 +19,7 @@ import java.sql.Connection;
 import java.util.*;
 
 @ProcessName("group")
-public class QueryGroup extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams> {
+public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams> {
 
     private @Inject RulesFactory rulesFactory;
     private @Inject DatabaseUtils databaseUtils;

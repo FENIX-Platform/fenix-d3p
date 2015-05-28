@@ -13,7 +13,7 @@ import java.sql.Connection;
 import java.util.Iterator;
 
 @ProcessName("asTable")
-public class ToTableStep extends StatefulProcess {
+public class ToTable extends StatefulProcess {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
 

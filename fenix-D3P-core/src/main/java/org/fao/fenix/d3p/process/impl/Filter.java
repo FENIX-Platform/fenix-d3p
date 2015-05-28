@@ -24,7 +24,7 @@ import java.sql.Types;
 import java.util.*;
 
 @ProcessName("filter")
-public class QueryFilter extends org.fao.fenix.d3p.process.Process<DataFilter> {
+public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
 
