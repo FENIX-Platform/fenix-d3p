@@ -1,0 +1,73 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.fao.fenix</groupId>
+        <artifactId>fenix-D3P</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+	<artifactId>fenix-D3P-core</artifactId>
+
+
+	<dependencies>
+
+        <dependency>
+            <groupId>org.fao.fenix</groupId>
+            <artifactId>fenix-D3S-cache</artifactId>
+            <version>2.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- FENIX search commons components -->
+        <dependency>
+            <groupId>org.fao.fenix</groupId>
+            <artifactId>fenix-commons-search</artifactId>
+            <version>1.0.1-SNAPSHOT</version>
+        </dependency>
+
+        <!-- D3S -->
+        <dependency>
+            <groupId>org.fao.fenix</groupId>
+            <artifactId>fenix-D3S-services</artifactId>
+            <version>2.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.18.1-GA</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- UTILS -->
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>0.9.9-RC1</version>
+        </dependency>
+
+
+        <!-- Test
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+             -->
+
+    </dependencies>
+</project>

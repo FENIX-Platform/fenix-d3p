@@ -1,0 +1,8 @@
+//Filter over D3S managed resources data
+{
+  "resources" : {}, //Resources allowed metadata expressed as a FieldsFilter
+  "data" : {}, //Domain allowed rows and columns expressed as a DataFilter
+  "flow" : [ //Domain data preprocessing flow
+    {} //Data processing component selector
+  ]
+}

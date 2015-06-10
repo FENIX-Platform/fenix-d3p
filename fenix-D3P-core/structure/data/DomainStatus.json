@@ -1,0 +1,23 @@
+//Domain creation status and metadata informations
+{
+  "resource" : { //Generated domain resource metadata
+    "uid" : "",
+    "version" : "",
+    "title" : "",
+    "dsd" : {
+      //Complete dsd domain structure
+    }
+  },
+
+  "resources" : [ //Involved resources identification informations
+    {
+      "uid" : "",
+      "version" : "",
+      "title" : ""
+    }
+  ],
+
+  "status" : "", //Domain construction status. Possible values are: fetch, merge, complete
+
+  "count" : 0 //Remaining resources to load from remote resources
+}
