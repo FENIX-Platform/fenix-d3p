@@ -24,6 +24,7 @@
             <groupId>org.fao.fenix</groupId>
             <artifactId>fenix-commons-search</artifactId>
             <version>1.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- D3S -->
@@ -45,7 +46,7 @@
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
-            <version>0.9.9-RC1</version>
+            <version>0.9.11-SNAPSHOT</version>
         </dependency>
 
 
