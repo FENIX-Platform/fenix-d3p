@@ -22,7 +22,7 @@
         <!-- FENIX search commons components -->
         <dependency>
             <groupId>org.fao.fenix</groupId>
-            <artifactId>fenix-commons-search</artifactId>
+            <artifactId>fenix-commons-dxf</artifactId>
             <version>1.0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
