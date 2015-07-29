@@ -9,7 +9,6 @@ import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
-import org.fao.fenix.d3p.process.dto.Aggregation;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
@@ -18,9 +17,6 @@ import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Types;
 import java.util.*;
 
 @ProcessName("filter")
@@ -119,7 +115,7 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
 
                 Type columnType = column.getType();
                 if (fieldFilter!=null) {
-                    switch (fieldFilter.getFilterType()) {
+                    switch (fieldFilter.retrieveFilterType()) {
                         case enumeration:
                             if (columnType!=Type.string)
                                 throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
