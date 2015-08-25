@@ -71,6 +71,8 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         step.setData(query);
+        if (source instanceof QueryStep)
+            step.setParams(((QueryStep)source).getParams());
         return step;
     }
 
@@ -130,12 +132,12 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
             if (groupKeys.contains(column.getId()))
                 query.append(column.getId()).append(',');
             else if (groups.containsKey(column.getId()))
-                query.append(groups.get(column.getId())).append(',');
+                query.append(groups.get(column.getId())).append(" AS ").append(column.getId()).append(',');
         //Finish query build
         query.setLength(query.length() - 1);
-        query.append(" FROM ").append(source);
+        query.append(" FROM (").append(source);
         if (groupKeys.size()>0) {
-            query.append(" GROUP BY ");
+            query.append(") GROUP BY ");
             for (String gk : groupKeys)
                 query.append(gk).append(',');
             query.setLength(query.length() - 1);

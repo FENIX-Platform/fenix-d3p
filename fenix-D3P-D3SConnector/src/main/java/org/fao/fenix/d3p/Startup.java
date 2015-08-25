@@ -3,6 +3,8 @@ package org.fao.fenix.d3p;
 import org.fao.fenix.commons.utils.Properties;
 import org.fao.fenix.d3p.process.ProcessFactory;
 import org.fao.fenix.d3p.process.impl.group.RulesFactory;
+import org.fao.fenix.d3s.server.init.InitListener;
+import org.fao.fenix.d3s.server.init.MainController;
 
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
@@ -12,10 +14,22 @@ import javax.servlet.annotation.WebListener;
 import java.io.File;
 import java.util.Collections;
 
-@WebListener
-public class Startup  implements ServletContextListener {
+@WebListener ("")
+public class Startup  implements ServletContextListener, InitListener {
     private @Inject ProcessFactory processFactory;
     private @Inject RulesFactory rulesFactory;
+    private @Inject MainController d3sController;
+
+    @Override
+    public void init(Properties d3sInitParameters) throws Exception {
+        try {
+            //Init modules
+            processFactory.init(getInitParameter("process.impl.package"));
+            rulesFactory.init(getInitParameter("rules.impl.package"));
+        } catch (Exception e) {
+            System.err.println("D3P initialization error: "+e.getMessage());
+        }
+    }
 
 
     @Override
@@ -27,10 +41,7 @@ public class Startup  implements ServletContextListener {
             for (Object key : Collections.list(context.getInitParameterNames()))
                 initParameters.setProperty((String)key, context.getInitParameter((String)key));
 
-            //Init modules
-            processFactory.init(getInitParameter("process.impl.package"));
-            rulesFactory.init(getInitParameter("rules.impl.package"));
-
+            d3sController.registerListener(this);
         } catch (Exception e) {
             System.err.println("D3P initialization error: "+e.getMessage());
         }
