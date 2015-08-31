@@ -26,7 +26,7 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
 
     @Override
     public Step process(Connection connection, DataFilter params, Step... sourceStep) throws Exception {
-        Step source = sourceStep!=null && sourceStep.length==1 ? (TableStep)sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
@@ -47,7 +47,9 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             //Normalize table name
             tableName = type==StepType.table ? getCacheStorage().getTableName(tableName) : '('+tableName+')';
             //Create query
-            Collection<Object> queryParameters = new LinkedList<>();
+            Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
+            Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
+
             String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters);
             //Generate and return query step
             QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
