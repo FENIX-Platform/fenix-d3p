@@ -10,6 +10,7 @@ import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import java.sql.Connection;
+import java.util.Date;
 import java.util.Iterator;
 
 @ProcessName("asTable")
@@ -41,7 +42,7 @@ public class ToTable extends StatefulProcess {
                 Iterator<Object[]> rawData = ((IteratorStep) source).getData();
                 if (rawData != null) {
                     cacheStorage.create(table, null);
-                    cacheStorage.store(table, databaseUtils.getDataIterator(rawData), 0, true);
+                    cacheStorage.store(table, databaseUtils.getDataIterator(rawData), 0, true, new Date());
                 }
             } else if (sourceType==StepType.query) {
                 String rawData = ((QueryStep)source).getData();

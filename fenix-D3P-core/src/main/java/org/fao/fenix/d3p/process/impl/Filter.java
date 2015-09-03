@@ -72,7 +72,7 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             for (DSDColumn column : source.getColumns())
                 if (columnsName.contains(column.getId()))
                     columns.add(column);
-                else if (column.getKey())
+                else if (column.getKey()!=null && column.getKey())
                     throw new UnsupportedOperationException("Cannot remove key columns from selection");
             dsd.setColumns(columns);
         } else
