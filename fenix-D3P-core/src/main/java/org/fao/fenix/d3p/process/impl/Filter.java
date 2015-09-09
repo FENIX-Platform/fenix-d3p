@@ -4,6 +4,7 @@ package org.fao.fenix.d3p.process.impl;
 import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.Order;
@@ -50,7 +51,7 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
             Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
 
-            String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters);
+            String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters, dsd.getColumns());
             //Generate and return query step
             QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
             step.setDsd(filter(dsd, params));
@@ -80,8 +81,14 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         return dsd;
     }
 
-    private String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params) throws Exception {
+    private String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<DSDColumn> dsdColumns) throws Exception {
         Map<String, Column> columnsByName = table.getColumnsByName();
+        Map<String, String> codeLists = new HashMap<>();
+        for (DSDColumn column : dsdColumns)
+            if (column.getDataType()== DataType.code) {
+                OjCodeList codeList = column.getDomain().getCodes().iterator().next();
+                codeLists.put(column.getId(), getId(codeList.getIdCodeList(), codeList.getVersion()));
+            }
 
         StringBuilder query = new StringBuilder("SELECT ");
 
@@ -106,8 +113,42 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         //Add where condition
         StandardFilter rowsFilter = filter!=null ? filter.getRows() : null;
         if (rowsFilter!=null && rowsFilter.size()>0) {
+
+            //Order filter on key columns
+            final ArrayList<String> keyColumns = new ArrayList<>();
+            for (Column column : table.getColumns())
+                if (column.isKey())
+                    keyColumns.add(column.getName());
+
+            LinkedHashMap<String, FieldFilter> rowsFilterOrdered = null;
+            if (keyColumns.size()>0) {
+                List<String> orderedColumns = new LinkedList<>(rowsFilter.keySet());
+                Collections.sort(orderedColumns, new Comparator<String>() {
+                    @Override
+                    public int compare(String o1, String o2) {
+                        int index_o1 = keyColumns.indexOf(o1);
+                        index_o1 = index_o1 < 0 ? Integer.MAX_VALUE : index_o1;
+                        int index_o2 = keyColumns.indexOf(o2);
+                        index_o2 = index_o2 < 0 ? Integer.MAX_VALUE : index_o2;
+                        if (index_o1 == index_o2)
+                            return o1.compareTo(o2);
+                        else if (index_o1 < index_o2)
+                            return -1;
+                        else
+                            return 1;
+                    }
+                });
+
+                rowsFilterOrdered = new LinkedHashMap<>();
+                for (String column : orderedColumns)
+                    rowsFilterOrdered.put(column, rowsFilter.get(column));
+            } else {
+                rowsFilterOrdered = new LinkedHashMap<>(rowsFilter);
+            }
+
+            //Build where condition
             query.append(" WHERE 1=1");
-            for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilter.entrySet()) {
+            for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilterOrdered.entrySet()) {
                 String fieldName = conditionEntry.getKey();
                 Column column = columnsByName.get(fieldName);
                 FieldFilter fieldFilter = conditionEntry.getValue();
@@ -149,22 +190,31 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
                             query.append(')');
                             break;
                         case code:
+                            String codeList = codeLists.get(fieldName);
                             query.append(" AND ");
                             if (columnType==Type.string) {
                                 query.append(fieldName).append(" IN (");
-                                for (CodesFilter codesFilter : fieldFilter.codes)
+                                for (CodesFilter codesFilter : fieldFilter.codes) {
+                                    String filterCodeList = getId(codesFilter.uid, codesFilter.version);
+                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
                                     for (String code : codesFilter.codes) {
                                         query.append("?,");
                                         params.add(code);
                                     }
+                                }
                                 query.setCharAt(query.length()-1, ')');
                             } else if (columnType==Type.array) {
                                 query.append('(');
-                                for (CodesFilter codesFilter : fieldFilter.codes)
+                                for (CodesFilter codesFilter : fieldFilter.codes) {
+                                    String filterCodeList = getId(codesFilter.uid, codesFilter.version);
+                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
                                     for (String code : codesFilter.codes) {
                                         query.append("ARRAY_CONTAINS (").append(fieldName).append(", ?) OR ");
                                         params.add(code);
                                     }
+                                }
                                 query.setLength(query.length()-4);
                                 query.append(')');
                             } else
@@ -181,6 +231,10 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
 
         //Return query
         return query.toString();
+    }
+
+    private String getId(String uid, String version) {
+        return uid!=null ? (version!=null ? uid + "@@@" + version : uid) : null;
     }
 
 }
