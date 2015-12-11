@@ -17,10 +17,12 @@ import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.dto.dataset.Type;
+import org.fao.fenix.d3s.msd.services.spi.Resources;
 import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
@@ -28,6 +30,7 @@ import java.util.*;
 public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilter> {
     private @Inject DatabaseUtils databaseUtils;
     private @Inject StepFactory stepFactory;
+    private @Inject Resources resourcesService;
 
     @Override
     public Step process(Connection connection, PercentageFilter params, Step... sourceStep) throws Exception {
@@ -56,6 +59,9 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 if (type!=StepType.table)
                     throw new UnsupportedOperationException("Percentage filter in mode 3 can be applied only on a table");
 
+                //TODO Verify table isn't a D3S table
+                //resourcesService.loadMetadata()
+
                 //Select totals
                 DataFilter totalsFilter = new DataFilter();
                 totalsFilter.setRows(params.getTotalRows());
@@ -63,19 +69,21 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 columns.add(valueColumnId);
                 totalsFilter.setColumns(columns);
 
-                queryParameters.addAll(params.getTotalRows().values());
+                String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, dsd.getColumns());
+                ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeQuery();
 
-                String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), new LinkedList<>(), dsd.getColumns());
-                ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters).executeQuery();
+                //Update table
                 String[] columnsArray = columns.toArray(new String[columns.size()]);
-                Collection<Map<String,Object>> totals = new LinkedList<>();
+                PreparedStatement updateStatement = connection.prepareStatement(createUpdateQuery(totalsRawData.getDouble(columnsArray.length),valueColumnId,tableName,columns));
                 while (totalsRawData.next()) {
-                    Map<String,Object> totalKey = new LinkedHashMap<>();
+                    Object[] keyParams = new Object[columnsArray.length-1];
                     for (int i=0; i<columnsArray.length-1; i++)
-                        totalKey.put(columnsArray[i],totalsRawData.getObject(i+1));
-
+                        keyParams[i] = totalsRawData.getObject(i+1);
                     //Run update query
+                    updateStatement.clearParameters();
+                    databaseUtils.fillStatement(updateStatement, null, keyParams).addBatch();
                 }
+                updateStatement.executeBatch();
 
                 //Run delete of totals if needed
 
@@ -106,15 +114,15 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
         return valueColumnId+"*100/"+total;
     }
 
-    private String getKeyWhereCondition(Map<String,Object> filterValues) {
+    private String getKeyWhereCondition(Collection<String> filterColumns) {
         StringBuilder condition = new StringBuilder();
-        for (Map.Entry<String,Object> entry : filterValues.entrySet())
-            condition.append(" AND ").append(entry.getKey()).append(" = ?");
+        for (String columnId : filterColumns)
+            condition.append(" AND ").append(columnId).append(" = ?");
         return condition.length()>0 ? condition.substring(5) : null;
     }
 
-    private String getUpdateQuery(double total, String valueColumnId, String tableName, Map<String,Object> filterValues) {
-        String whereCondition = getKeyWhereCondition(filterValues);
+    private String createUpdateQuery(double total, String valueColumnId, String tableName, Collection<String> filterColumns) {
+        String whereCondition = getKeyWhereCondition(filterColumns);
         return new StringBuilder("UPDATE ")
                 .append(tableName)
                 .append(" SET ")
