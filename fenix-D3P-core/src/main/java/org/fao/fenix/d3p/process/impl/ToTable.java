@@ -10,6 +10,7 @@ import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.Date;
 import java.util.Iterator;
 
@@ -31,7 +32,7 @@ public class ToTable extends StatefulProcess {
 
         if (sourceType!=null && dsd!=null) {
             //Return source if it is already a table step
-            if (sourceType==StepType.table)
+            if (sourceType==StepType.table) //TODO create a new temporary table (clone the current table)
                 return source;
             //Retrieve new TMP table metadata
             DatasetStorage cacheStorage = getCacheStorage();
@@ -48,7 +49,8 @@ public class ToTable extends StatefulProcess {
                 String rawData = ((QueryStep)source).getData();
                 if (rawData!=null && !rawData.trim().equals("")) {
                     cacheStorage.create(table, null);
-                    connection.createStatement().executeUpdate("insert into "+getCacheStorage().getTableName(tableName)+' '+rawData);
+                    PreparedStatement insertStatement = connection.prepareStatement("insert into "+getCacheStorage().getTableName(tableName)+' '+rawData);
+                    databaseUtils.fillStatement(insertStatement,((QueryStep)source).getTypes(),((QueryStep)source).getParams()).executeUpdate();
                 }
             }
             //Generate & return resulting step object
