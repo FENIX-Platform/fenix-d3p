@@ -113,8 +113,94 @@ public abstract class Process <T> {
             }
 
         //Add where condition
-        if (rowsFilter!=null && rowsFilter.size()>0) {
+        StringBuilder whereCondition = new StringBuilder();
+        if (rowsFilter!=null)
+            for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilter.entrySet()) {
+                String fieldName = conditionEntry.getKey();
+                Column column = columnsByName.get(fieldName);
+                FieldFilter fieldFilter = conditionEntry.getValue();
 
+                if (column==null)
+                    throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+
+                org.fao.fenix.d3s.cache.dto.dataset.Type columnType = column.getType();
+                if (fieldFilter!=null) {
+                    switch (fieldFilter.retrieveFilterType()) {
+                        case enumeration:
+                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.string)
+                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                            whereCondition.append(" AND ").append(fieldName).append(" IN (");
+                            for (String value : fieldFilter.enumeration) {
+                                whereCondition.append("?,");
+                                params.add(value);
+                            }
+                            whereCondition.setCharAt(whereCondition.length() - 1, ')');
+                            break;
+                        case time:
+                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
+                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                            whereCondition.append(" AND (");
+                            for (TimeFilter timeFilter : fieldFilter.time) {
+                                if (timeFilter.from!=null) {
+                                    whereCondition.append(fieldName).append(" >= ?");
+                                    params.add(timeFilter.getFrom(column.getPrecision()));
+                                }
+                                if (timeFilter.to!=null) {
+                                    if (timeFilter.from!=null)
+                                        whereCondition.append(" AND ");
+                                    whereCondition.append(fieldName).append(" <= ?");
+                                    params.add(timeFilter.getTo(column.getPrecision()));
+                                }
+                                whereCondition.append(" OR ");
+                            }
+                            whereCondition.setLength(whereCondition.length()-4);
+                            whereCondition.append(')');
+                            break;
+                        case code:
+                            String codeList = codeLists.get(fieldName);
+                            whereCondition.append(" AND ");
+                            if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.string) {
+                                whereCondition.append(fieldName).append(" IN (");
+                                for (CodesFilter codesFilter : fieldFilter.codes) {
+                                    String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
+                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                                    for (String code : codesFilter.codes) {
+                                        whereCondition.append("?,");
+                                        params.add(code);
+                                    }
+                                }
+                                whereCondition.setCharAt(whereCondition.length()-1, ')');
+                            } else if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.array) {
+                                whereCondition.append('(');
+                                for (CodesFilter codesFilter : fieldFilter.codes) {
+                                    String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
+                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                                    for (String code : codesFilter.codes) {
+                                        whereCondition.append("ARRAY_CONTAINS (").append(fieldName).append(", ?) OR ");
+                                        params.add(code);
+                                    }
+                                }
+                                whereCondition.setLength(whereCondition.length()-4);
+                                whereCondition.append(')');
+                            } else
+                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                    }
+
+                }
+            }
+        if (whereCondition.length()>0)
+            query.append(" WHERE ").append(whereCondition.substring(5));
+    }
+
+}
+
+
+
+
+
+/*
             //Order filter on key columns
             final ArrayList<String> keyColumns = new ArrayList<>();
             for (Column column : table.getColumns())
@@ -146,85 +232,4 @@ public abstract class Process <T> {
             } else {
                 rowsFilterOrdered = new LinkedHashMap<>(rowsFilter);
             }
-
-            //Build where condition
-            query.append(" WHERE 1=1");
-            for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilterOrdered.entrySet()) {
-                String fieldName = conditionEntry.getKey();
-                Column column = columnsByName.get(fieldName);
-                FieldFilter fieldFilter = conditionEntry.getValue();
-
-                if (column==null)
-                    throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-
-                org.fao.fenix.d3s.cache.dto.dataset.Type columnType = column.getType();
-                if (fieldFilter!=null) {
-                    switch (fieldFilter.retrieveFilterType()) {
-                        case enumeration:
-                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.string)
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-                            query.append(" AND ").append(fieldName).append(" IN (");
-                            for (String value : fieldFilter.enumeration) {
-                                query.append("?,");
-                                params.add(value);
-                            }
-                            query.setCharAt(query.length() - 1, ')');
-                            break;
-                        case time:
-                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-                            query.append(" AND (");
-                            for (TimeFilter timeFilter : fieldFilter.time) {
-                                if (timeFilter.from!=null) {
-                                    query.append(fieldName).append(" >= ?");
-                                    params.add(timeFilter.getFrom(column.getPrecision()));
-                                }
-                                if (timeFilter.to!=null) {
-                                    if (timeFilter.from!=null)
-                                        query.append(" AND ");
-                                    query.append(fieldName).append(" <= ?");
-                                    params.add(timeFilter.getTo(column.getPrecision()));
-                                }
-                                query.append(" OR ");
-                            }
-                            query.setLength(query.length()-4);
-                            query.append(')');
-                            break;
-                        case code:
-                            String codeList = codeLists.get(fieldName);
-                            query.append(" AND ");
-                            if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.string) {
-                                query.append(fieldName).append(" IN (");
-                                for (CodesFilter codesFilter : fieldFilter.codes) {
-                                    String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
-                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
-                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-                                    for (String code : codesFilter.codes) {
-                                        query.append("?,");
-                                        params.add(code);
-                                    }
-                                }
-                                query.setCharAt(query.length()-1, ')');
-                            } else if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.array) {
-                                query.append('(');
-                                for (CodesFilter codesFilter : fieldFilter.codes) {
-                                    String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
-                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
-                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-                                    for (String code : codesFilter.codes) {
-                                        query.append("ARRAY_CONTAINS (").append(fieldName).append(", ?) OR ");
-                                        params.add(code);
-                                    }
-                                }
-                                query.setLength(query.length()-4);
-                                query.append(')');
-                            } else
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
-                    }
-
-                }
-            }
-        }
-    }
-
-}
+*/
