@@ -67,6 +67,34 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         dsd.setAggregationRules(source.getAggregationRules());
         dsd.setContextSystem("D3P");
 
+        boolean removeKey = false;
+        Collection<String> columnsName = filter.getColumns();
+        if (columnsName!=null && columnsName.size()>0) {
+            Collection<DSDColumn> columns = new LinkedList<>();
+            for (DSDColumn column : source.getColumns())
+                if (columnsName.contains(column.getId()))
+                    columns.add(column);
+                else
+                    removeKey |= column.getKey()!=null && column.getKey();
+            if (removeKey)
+                for (DSDColumn column : columns)
+                    column.setKey(false);
+            dsd.setColumns(columns);
+        } else
+            dsd.setColumns(source.getColumns());
+        return dsd;
+    }
+
+}
+
+
+/*
+
+    private DSDDataset filter (DSDDataset source, DataFilter filter) {
+        DSDDataset dsd = new DSDDataset();
+        dsd.setAggregationRules(source.getAggregationRules());
+        dsd.setContextSystem("D3P");
+
         Collection<String> columnsName = filter.getColumns();
         if (columnsName!=null && columnsName.size()>0) {
             Collection<DSDColumn> columns = new LinkedList<>();
@@ -81,10 +109,6 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         return dsd;
     }
 
-}
-
-
-/*
     private int[] getSQLTypes (DSDDataset dsd) {
         if (dsd!=null && dsd.getColumns()!=null) {
             Table tmpTable = new Table("tmp", dsd);
