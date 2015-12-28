@@ -60,7 +60,6 @@ public class RulesFactory {
         initInstances(basePackage);
         initConfig();
         registerRules();
-
     }
 
     //Config
@@ -102,7 +101,7 @@ public class RulesFactory {
     //Custom database functions
     private @Inject CacheFactory cacheFactory;
     private void registerRules() throws Exception  {
-        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(D3SCache.fixed);
+        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(null);
         DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
         Connection connection = cacheStorage!=null ? cacheStorage.getConnection() : null;
         if (connection==null)

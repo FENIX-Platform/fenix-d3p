@@ -56,7 +56,7 @@ public class ToTable extends StatefulProcess {
             //Generate & return resulting step object
             TableStep step = (TableStep)stepFactory.getInstance(StepType.table);
             step.setRid(source.getRid() + "_cached");
-            step.setData(tableName);
+            step.setData(cacheStorage.getTableName(tableName));
             step.setDsd(dsd);
             return step;
         } else

@@ -28,8 +28,6 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("Select filter can be applied only on a table or an other select query");
         String sourceData = (String)source.getData();
-        if (type==StepType.table)
-            sourceData = getCacheStorage().getTableName(sourceData);
         DSDDataset dsd = source.getDsd();
         //Return correspondent "query" step
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);

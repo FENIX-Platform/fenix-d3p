@@ -125,8 +125,6 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("Precision filter can be applied only on a table or an other select query");
         String sourceData = (String)source.getData();
-        if (type==StepType.table)
-            sourceData = getCacheStorage().getTableName(sourceData);
         DSDDataset dsd = source.getDsd();
         //Verify code columns correspondence
         Map<String, String> conversionQuerySegments = new HashMap<>();

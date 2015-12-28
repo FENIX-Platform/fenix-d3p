@@ -47,7 +47,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
         String valueColumnId = valueColumn.getId();
 
         //Retrieve source info
-        tableName = type==StepType.table ? getCacheStorage().getTableName(tableName) : '('+tableName+')';
+        tableName = type==StepType.table ? tableName : '('+tableName+')';
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
 
         //Define mode

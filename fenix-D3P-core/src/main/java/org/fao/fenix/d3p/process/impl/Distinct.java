@@ -26,7 +26,7 @@ public class Distinct extends org.fao.fenix.d3p.process.Process {
         if (source==null)
             return null;
         if (source.getType()==StepType.table) {
-            String tableName = getCacheStorage().getTableName((String) source.getData());
+            String tableName = (String) source.getData();
             DSDDataset dsd = source.getDsd();
             Collection<DSDColumn> columns = dsd!=null ? dsd.getColumns() : null;
             if (columns==null)

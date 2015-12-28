@@ -28,7 +28,7 @@ public class FlowManager {
 
     public Resource<org.fao.fenix.commons.msd.dto.full.DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
         //Retrieve cache manager
-        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(D3SCache.fixed);
+        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(metadata);
         DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
         Connection connection = cacheStorage!=null ? cacheStorage.getConnection() : null;
         if (connection==null)
@@ -47,7 +47,7 @@ public class FlowManager {
         //Create source step
         Language[] languages = DatabaseStandards.getLanguageInfo();
         Step result = stepFactory.getInstance(StepType.table);
-        result.setData(tableName);
+        result.setData(cacheStorage.getTableName(tableName));
         result.setRid(tableName);
         result.setDsd(languages!=null ? dsd.extend(languages) : dsd);
         steps.put(result.getRid(), result);

@@ -26,7 +26,7 @@ public class Page extends org.fao.fenix.d3p.process.Process<org.fao.fenix.common
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(source.getDsd());
         if (source.getType()==StepType.table) {
-            step.setData(createPageQuery(params, getCacheStorage().getTableName((String) source.getData())));
+            step.setData(createPageQuery(params, (String) source.getData()));
         } else {
             step.setData(createPageQuery(params, '(' + (String) source.getData() + ')'));
             step.setParams(((QueryStep)source).getParams());

@@ -37,7 +37,7 @@ public class Order extends org.fao.fenix.d3p.process.Process<org.fao.fenix.commo
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(source.getDsd());
         if (source.getType()==StepType.table) {
-            step.setData(createOrderQuery(params, getCacheStorage().getTableName((String) source.getData()), columnsName));
+            step.setData(createOrderQuery(params, (String) source.getData(), columnsName));
         } else {
             step.setData(createOrderQuery(params, '(' + (String) source.getData() + ')', columnsName));
             step.setParams(((QueryStep)source).getParams());

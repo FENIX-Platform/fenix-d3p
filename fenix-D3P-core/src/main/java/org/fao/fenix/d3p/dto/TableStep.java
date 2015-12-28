@@ -30,7 +30,7 @@ public class TableStep extends Step<String> {
     @Override
     public Iterator<Object[]> getData(Connection connection) throws Exception {
         ResultSet rawData = connection.createStatement().executeQuery(getQuery());
-        return new DataIterator(rawData, null, null, null);
+        return new DataIterator(rawData, connection, null, null);
     }
 
     //Utils
@@ -43,15 +43,10 @@ public class TableStep extends Step<String> {
     }
 
     public String getQuery() throws Exception {
-        CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(D3SCache.fixed);
-        DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
-        if (cacheStorage==null)
-            throw new UnsupportedOperationException("No cache available");
-
         StringBuilder query = new StringBuilder();
         for (DSDColumn column : getDsd().getColumns())
             query.append(',').append(column.getId());
-        return "select "+query.substring(1)+" from "+cacheStorage.getTableName(getData());
+        return "select "+query.substring(1)+" from "+getData();
     }
 
 }

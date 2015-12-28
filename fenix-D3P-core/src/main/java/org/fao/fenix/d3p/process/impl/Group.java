@@ -42,8 +42,6 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
         String sourceData = (String)source.getData();
-        if (type==StepType.table)
-            sourceData = getCacheStorage().getTableName(sourceData);
         DSDDataset dsd = source.getDsd();
         Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
         //Append label aggregations if needed
