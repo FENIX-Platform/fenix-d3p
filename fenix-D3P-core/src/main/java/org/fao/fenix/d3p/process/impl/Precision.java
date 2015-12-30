@@ -148,6 +148,7 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(filter(dsd,params));
         step.setData(createGroupQuery(params, conversionQuerySegments, dsd, sourceData));
+        step.setRid(getRandomTmpTableName());
         return step;
     }
 

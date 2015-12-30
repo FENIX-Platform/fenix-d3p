@@ -37,7 +37,7 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
         Collection<QueryParameter> queryParameters = params.getQueryParameters();
         if (queryParameters!=null && queryParameters.size()>0) {
             Object[] queryParamsValue = new Object[queryParameters.size()];
-            int[] queryParamsType = new int[queryParameters.size()];
+            Integer[] queryParamsType = new Integer[queryParameters.size()];
             boolean containsType = false;
 
             Iterator<QueryParameter> queryParameterIterator = queryParameters.iterator();
@@ -54,6 +54,7 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
             step.setParams(queryParamsValue);
             step.setTypes(containsType ? queryParamsType : null);
         }
+        step.setRid(getRandomTmpTableName());
         return step;
     }
 

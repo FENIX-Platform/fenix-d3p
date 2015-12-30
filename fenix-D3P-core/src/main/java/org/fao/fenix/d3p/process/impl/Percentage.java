@@ -47,8 +47,9 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
         String valueColumnId = valueColumn.getId();
 
         //Retrieve source info
-        tableName = type==StepType.table ? tableName : '('+tableName+')';
+        tableName = type==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
+        Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
 
         //Define mode
         Double total = params!=null ? params.getTotal() : null;
@@ -79,7 +80,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             totalsFilter.setColumns(columns);
 
             Collection<Object> queryParameters = new LinkedList<>();
-            String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, dsd.getColumns());
+            String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
             ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeQuery();
 
             //Update table
@@ -97,7 +98,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             //Run delete of totals if needed
             if (!params.isInclusive()) {
                 queryParameters = new LinkedList<>();
-                query = createCacheDeleteQuery(params.getTotalRows(), new Table(tableName, dsd), queryParameters, dsd.getColumns());
+                query = createCacheDeleteQuery(params.getTotalRows(), new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
                 databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeUpdate();
             }
 
@@ -108,7 +109,8 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             valueColumn.setId(getValueSelect(total, valueColumnId)+" as "+valueColumnId);
             //Prepare query
             Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
-            String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, dsd.getColumns());
+            Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
+            String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
             //Restore value column id
             valueColumn.setId(valueColumnId);
             //Create and return query step
@@ -116,6 +118,8 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             step.setDsd(dsd);
             step.setData(query);
             step.setParams(queryParameters.toArray());
+            step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
+            step.setRid(getRandomTmpTableName());
             return step;
         }
     }

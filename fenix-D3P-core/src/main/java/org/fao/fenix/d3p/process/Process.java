@@ -47,14 +47,14 @@ public abstract class Process <T> {
 
     //UTILS
     protected String getRandomTmpTableName() {
-        return "TMP_"+uidUtils.getId();
+        return "TMP_"+uidUtils.newId();
     }
     protected DatasetStorage getCacheStorage() {
         return cacheStorage;
     }
 
 
-    protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<DSDColumn> dsdColumns) throws Exception {
+    protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
 
         Map<String, Column> columnsByName = table.getColumnsByName();
 
@@ -81,7 +81,7 @@ public abstract class Process <T> {
 
         //Add where condition
         StandardFilter rowsFilter = filter!=null ? filter.getRows() : null;
-        appendWhereCondition(query,rowsFilter,table,params,dsdColumns);
+        appendWhereCondition(query,rowsFilter,table,params,types,dsdColumns);
 
         //Add ordering
         if (ordering!=null)
@@ -91,10 +91,10 @@ public abstract class Process <T> {
         return query.toString();
     }
 
-    protected String createCacheDeleteQuery(StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<DSDColumn> dsdColumns) throws Exception {
+    protected String createCacheDeleteQuery(StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
         StringBuilder query = new StringBuilder("DELETE FROM ").append(table.getTableName());
         //Add where condition
-        appendWhereCondition(query,rowsFilter,table,params,dsdColumns);
+        appendWhereCondition(query,rowsFilter,table,params,types,dsdColumns);
         //Return query
         return query.toString();
     }
@@ -103,7 +103,8 @@ public abstract class Process <T> {
         return uid!=null ? (version!=null ? uid + "@@@" + version : uid) : null;
     }
 
-    protected void appendWhereCondition (StringBuilder query, StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<DSDColumn> dsdColumns) throws Exception {
+    protected void appendWhereCondition (StringBuilder query, StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
+        //TODO support types
         Map<String, Column> columnsByName = table.getColumnsByName();
         Map<String, String> codeLists = new HashMap<>();
         for (DSDColumn column : dsdColumns)

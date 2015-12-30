@@ -42,6 +42,7 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
         String sourceData = (String)source.getData();
+        sourceData = type==StepType.table ? sourceData : '('+sourceData+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
         Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
         //Append label aggregations if needed
@@ -69,8 +70,11 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         step.setData(query);
-        if (source instanceof QueryStep)
-            step.setParams(((QueryStep)source).getParams());
+        if (type==StepType.query) {
+            step.setParams(((QueryStep) source).getParams());
+            step.setTypes(((QueryStep) source).getTypes());
+        }
+        step.setRid(getRandomTmpTableName());
         return step;
     }
 
@@ -133,9 +137,9 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
                 query.append(groups.get(column.getId())).append(" AS ").append(column.getId()).append(',');
         //Finish query build
         query.setLength(query.length() - 1);
-        query.append(" FROM (").append(source);
+        query.append(" FROM ").append(source);
         if (groupKeys.size()>0) {
-            query.append(") GROUP BY ");
+            query.append(" GROUP BY ");
             for (String gk : groupKeys)
                 query.append(gk).append(',');
             query.setLength(query.length() - 1);

@@ -46,17 +46,21 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
                                 columnsName.add(id);
                         }
             //Normalize table name
-            tableName = type==StepType.table ? tableName : '('+tableName+')';
+            tableName = type==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
             //Create query
             Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
             Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
+            Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
+            Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
 
-            String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters, dsd.getColumns());
+            String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
             //Generate and return query step
             QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
             step.setDsd(filter(dsd, params));
             step.setData(query);
             step.setParams(queryParameters.toArray());
+            step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
+            step.setRid(getRandomTmpTableName());
             return step;
         } else
             throw new Exception ("Source step for data filtering is unavailable or incomplete.");

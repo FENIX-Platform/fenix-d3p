@@ -19,13 +19,15 @@ public class Order extends org.fao.fenix.d3p.process.Process<org.fao.fenix.commo
     @Override
     public Step process(Connection connection, org.fao.fenix.commons.utils.Order params, Step... sourceStep) throws Exception {
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
-        if (source==null)
-            return null;
+        String tableName = source!=null ? (String)source.getData() : null;
+        if (tableName==null)
+            throw new Exception("No data to apply ordering");
+
         StepType sourceType = source.getType();
         DSDDataset dsd = source.getDsd();
         Collection<DSDColumn> columns = dsd!=null ? dsd.getColumns() : null;
-        if (sourceType==StepType.iterator)
-            throw new UnsupportedOperationException("Unsupported 'iterator' source step type");
+        if (sourceType==null || (sourceType!=StepType.table && sourceType!=StepType.query))
+            throw new UnsupportedOperationException("order filter can be applied only on a table or an other select query");
         if (columns==null)
             throw new Exception("Cannot order source with undefined structure");
 
@@ -34,15 +36,18 @@ public class Order extends org.fao.fenix.d3p.process.Process<org.fao.fenix.commo
         for (DSDColumn column : columns)
             columnsName[i++] = column.getId();
 
+
+        //Normalize table name
+        tableName = sourceType==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
+        //Create and update query
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(source.getDsd());
-        if (source.getType()==StepType.table) {
-            step.setData(createOrderQuery(params, (String) source.getData(), columnsName));
-        } else {
-            step.setData(createOrderQuery(params, '(' + (String) source.getData() + ')', columnsName));
-            step.setParams(((QueryStep)source).getParams());
-            step.setTypes(((QueryStep)source).getTypes());
+        step.setData(createOrderQuery(params, tableName, columnsName));
+        if (sourceType==StepType.query) {
+            step.setParams(((QueryStep) source).getParams());
+            step.setTypes(((QueryStep) source).getTypes());
         }
+        step.setRid(getRandomTmpTableName());
 
         return step;
     }

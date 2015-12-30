@@ -14,7 +14,7 @@ import java.util.Iterator;
 
 public class QueryStep extends Step<String> {
     private Object[] params;
-    private int[] types;
+    private Integer[] types;
 
     private @Inject DatabaseUtils databaseUtils;
 
@@ -37,11 +37,11 @@ public class QueryStep extends Step<String> {
         this.params = params;
     }
 
-    public int[] getTypes() {
+    public Integer[] getTypes() {
         return types;
     }
 
-    public void setTypes(int[] types) {
+    public void setTypes(Integer[] types) {
         this.types = types;
     }
 
