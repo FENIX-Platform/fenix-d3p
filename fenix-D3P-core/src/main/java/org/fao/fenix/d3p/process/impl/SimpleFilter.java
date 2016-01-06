@@ -26,8 +26,11 @@ public class SimpleFilter extends org.fao.fenix.d3p.process.Process<SimpleFilter
 
     @Override
     public Step process(Connection connection, SimpleFilterParams params, Step... sourceStep) throws Exception {
-        TableStep source = sourceStep!=null && sourceStep.length==1 && sourceStep[0] instanceof TableStep ? (TableStep)sourceStep[0] : null;
-        String tableName = source!=null ? source.getData() : null;
+        Step source = sourceStep!=null && sourceStep.length==1 && sourceStep[0] instanceof TableStep ? (TableStep)sourceStep[0] : null;
+        StepType type = source!=null ? source.getType() : null;
+        if (type==null || (type!=StepType.table && type!=StepType.query))
+            throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
+        String tableName = source!=null ? (String)source.getData() : null;
         DSDDataset dsd = source!=null ? source.getDsd() : null;
         if (tableName!=null && dsd!=null) {
             DataFilter filter = params!=null ? params.getFilter() : null;
@@ -43,10 +46,28 @@ public class SimpleFilter extends org.fao.fenix.d3p.process.Process<SimpleFilter
                             if (!columnsName.contains(id))
                                 columnsName.add(id);
                         }
-            //Prepare step
-            IteratorStep step = (IteratorStep)stepFactory.getInstance(StepType.iterator);
-            step.setDsd(filter(dsd, filter));
-            step.setData(getCacheStorage().load(order,null,filter,new Table(source.getData(), source.getDsd())));
+            //Normalize table name
+            tableName = type==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
+            //Create query
+            Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
+            Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
+            Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
+            Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
+
+            String query = createCacheFilterQuery(null, params.getFilter(), new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
+            //Add ordering
+            if (order!=null)
+                if (columnsName!=null && columnsName.size()>0)
+                    query+=order.toH2SQL(columnsName.toArray(new String[columnsName.size()]));
+                else
+                    query+=order.toH2SQL();
+            //Generate and return query step
+            QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
+            step.setDsd(filter(dsd, params.getFilter()));
+            step.setData(query);
+            step.setParams(queryParameters.toArray());
+            step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
+            step.setRid(getRandomTmpTableName());
             return step;
         } else
             throw new Exception ("Source step for data filtering is unavailable or incomplete.");

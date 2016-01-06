@@ -2,6 +2,7 @@ package org.fao.fenix.d3p.services;
 
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
+import org.fao.fenix.commons.msd.dto.full.DSDCache;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.msd.dto.templates.ResponseBeanFactory;
@@ -55,6 +56,9 @@ public class Processes {
     public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow) throws Exception {
         //Retrieve source metadata
         MeIdentification<DSDDataset> metadata = resourcesService.loadMetadata(uid, version);
+        //Preload linked entities
+        metadata.getDsd();
+
         if (metadata==null)
             return null;
 
