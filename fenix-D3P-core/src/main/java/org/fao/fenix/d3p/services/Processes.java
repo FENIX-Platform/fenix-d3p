@@ -56,9 +56,6 @@ public class Processes {
     public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow) throws Exception {
         //Retrieve source metadata
         MeIdentification<DSDDataset> metadata = resourcesService.loadMetadata(uid, version);
-        //Preload linked entities
-        metadata.getDsd();
-
         if (metadata==null)
             return null;
 
@@ -67,7 +64,7 @@ public class Processes {
             return resourcesService.getResourceByUID(uid,version,false,true,true,false);
 
         //Prefetch source data
-        resourcesService.fetch(metadata.getRID());
+        resourcesService.fetch(metadata);
 
         //Apply flow
         Resource<DSDDataset,Object[]> result = flowManager.process(metadata, flow);
