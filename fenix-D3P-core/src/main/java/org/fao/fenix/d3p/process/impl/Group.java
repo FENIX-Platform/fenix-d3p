@@ -122,7 +122,7 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         //Support labels into DSD
         Language[] languages = DatabaseStandards.getLanguageInfo();
         if (languages!=null && languages.length>0)
-            dsd.extend(languages);
+            dsd.extend(false, languages);
         //Return dsd
         return dsd;
     }

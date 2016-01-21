@@ -30,9 +30,6 @@ public class FlowManager {
         //Retrieve cache manager
         CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(metadata);
         DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
-        Connection connection = cacheStorage!=null ? cacheStorage.getConnection() : null;
-        if (connection==null)
-            throw new UnsupportedOperationException("No cache available");
 
         //Retrieve source information
         String tableName = metadata!=null ? getId(metadata.getUid(), metadata.getVersion()) : null;
@@ -49,8 +46,12 @@ public class FlowManager {
         Step result = stepFactory.getInstance(StepType.table);
         result.setData(cacheStorage.getTableName(tableName));
         result.setRid(tableName);
-        result.setDsd(languages!=null ? dsd.extend(languages) : dsd);
+        result.setDsd(languages!=null ? dsd.extend(false, languages) : dsd);
         steps.put(result.getRid(), result);
+
+        Connection connection = cacheStorage!=null ? cacheStorage.getConnection() : null;
+        if (connection==null)
+            throw new UnsupportedOperationException("No cache available");
 
         try {
 
