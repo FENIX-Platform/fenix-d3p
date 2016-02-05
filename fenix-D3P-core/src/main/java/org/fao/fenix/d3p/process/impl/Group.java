@@ -47,16 +47,7 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
         //Append label aggregations if needed
         Collection<Aggregation> aggregations = new LinkedList<>(Arrays.asList(params.getAggregations()));
-        Language[] languages = DatabaseStandards.getLanguageInfo();
-        if (languages!=null && languages.length>0)
-            for (DSDColumn column : dsd.getColumns())
-                if ((column.getDataType()== DataType.code || column.getDataType()==DataType.customCode) && groupsKey.contains(column.getId()))
-                    for (Language l : languages) {
-                        Aggregation a = new Aggregation();
-                        a.setRule("FIRST");
-                        a.setColumns(new String[]{column.getId() + '_' + l.getCode()});
-                        aggregations.add(a);
-                    }
+        addLanguageColumnsAggregations(aggregations, params, dsd);
         //Define groups rule
         Map<String, String> groups = new HashMap<>();
         for (Aggregation aggregation : aggregations) {
@@ -77,6 +68,29 @@ public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams
         step.setRid(getRandomTmpTableName());
         return step;
     }
+
+
+    private void addLanguageColumnsAggregations (Collection<Aggregation> aggregations, GroupParams params, DSDDataset sourceDSD) {
+        Language[] languages = DatabaseStandards.getLanguageInfo();
+        if (languages!=null && languages.length>0) {
+            Set<String> paramsColumns = new HashSet<>(Arrays.asList(params.getBy()));
+            for (Aggregation aggregation : params.getAggregations())
+                paramsColumns.addAll(Arrays.asList(aggregation.getColumns()));
+
+            for (DSDColumn column : sourceDSD.getColumns())
+                if ((column.getDataType() == DataType.code || column.getDataType() == DataType.customCode) && paramsColumns.contains(column.getId()))
+                    for (Language l : languages) {
+                        String columnName = column.getId() + '_' + l.getCode();
+                        if (!paramsColumns.contains(columnName)) {
+                            Aggregation a = new Aggregation();
+                            a.setRule("FIRST");
+                            a.setColumns(new String[]{columnName});
+                            aggregations.add(a);
+                        }
+                    }
+        }
+    }
+
 
     private String createAggregationQuerySegment(String ruleId, Aggregation aggregation) {
         //define aggregation columns

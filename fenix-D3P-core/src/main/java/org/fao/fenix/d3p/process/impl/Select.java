@@ -27,33 +27,36 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("Select filter can be applied only on a table or an other select query");
-        String sourceData = (String)source.getData();
+        String sourceData = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
         //Return correspondent "query" step
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
         step.setDsd(filter(dsd,params.getColumns())); //DSD adjustment before query creation
         step.setData(createQuery(params.getQuery(), dsd, sourceData));
         //Set query parameters
-        Collection<QueryParameter> queryParameters = params.getQueryParameters();
-        if (queryParameters!=null && queryParameters.size()>0) {
-            Object[] queryParamsValue = new Object[queryParameters.size()];
-            Integer[] queryParamsType = new Integer[queryParameters.size()];
+        Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
+        Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
+        Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
+        Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
+
+        Collection<QueryParameter> newQueryParameters = params.getQueryParameters();
+        if (newQueryParameters!=null && newQueryParameters.size()>0) {
+            Collection<Integer> queryParamsType = new LinkedList<>();
             boolean containsType = false;
 
-            Iterator<QueryParameter> queryParameterIterator = queryParameters.iterator();
-            for (int i=0; i<queryParamsValue.length; i++) {
-                QueryParameter p = queryParameterIterator.next();
+            for (QueryParameter p : newQueryParameters) {
                 //type
                 Integer pType = p.jdbcType();
                 containsType |= pType != null;
-                queryParamsType[i] = pType;
+                queryParamsType.add(pType);
                 //value
-                queryParamsValue[i] = p.getValue();
+                queryParameters.add(p.getValue());
             }
-
-            step.setParams(queryParamsValue);
-            step.setTypes(containsType ? queryParamsType : null);
+            if (containsType && existingTypes!=null && existingTypes.length>0)
+                queryTypes.addAll(queryParamsType);
         }
+        step.setParams(queryParameters.toArray());
+        step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
         step.setRid(getRandomTmpTableName());
         return step;
     }
