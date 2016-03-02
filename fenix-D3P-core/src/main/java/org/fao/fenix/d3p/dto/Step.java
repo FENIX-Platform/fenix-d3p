@@ -5,6 +5,8 @@ import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeContent;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.msd.dto.type.RepresentationType;
+import org.fao.fenix.commons.process.dto.StepId;
+import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
@@ -18,7 +20,8 @@ import java.util.LinkedList;
 public abstract class Step<T> {
     private T data;
     private DSDDataset dsd;
-    private String rid;
+    private StepId rid;
+    private DatasetStorage storage;
 
 
     public abstract StepType getType();
@@ -40,14 +43,21 @@ public abstract class Step<T> {
         this.dsd = dsd;
     }
 
-    public String getRid() {
+    public StepId getRid() {
         return rid;
     }
 
-    public void setRid(String rid) {
+    public void setRid(StepId rid) {
         this.rid = rid;
     }
 
+    public DatasetStorage getStorage() {
+        return storage;
+    }
+
+    public void setStorage(DatasetStorage storage) {
+        this.storage = storage;
+    }
 
     //Utils
     public Resource<DSDDataset,Object[]> getResource(Connection connection) throws Exception {
@@ -66,7 +76,8 @@ public abstract class Step<T> {
         content.setResourceRepresentationType(RepresentationType.dataset);
 
         MeIdentification<DSDDataset> metadata = new MeIdentification<>();
-        metadata.setUid(getRid());
+        metadata.setUid(rid.getUid());
+        metadata.setVersion(rid.getVersion());
         metadata.setMeContent(content);
         metadata.setDsd(getDsd());
 

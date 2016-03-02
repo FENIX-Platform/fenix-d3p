@@ -2,13 +2,12 @@ package org.fao.fenix.d3p.services;
 
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
-import org.fao.fenix.commons.msd.dto.full.DSDCache;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.msd.dto.templates.ResponseBeanFactory;
 import org.fao.fenix.commons.msd.dto.templates.standard.combined.Metadata;
 import org.fao.fenix.commons.process.dto.Process;
-import org.fao.fenix.d3p.process.FlowManager;
+import org.fao.fenix.d3p.flow.FlowManager;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
 import javax.inject.Inject;

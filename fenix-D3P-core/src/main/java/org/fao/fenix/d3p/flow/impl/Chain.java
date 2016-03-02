@@ -1,4 +1,4 @@
-package org.fao.fenix.d3p.process;
+package org.fao.fenix.d3p.flow.impl;
 
 
 import org.fao.fenix.commons.msd.dto.data.Resource;
@@ -10,23 +10,28 @@ import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
-import org.fao.fenix.d3s.cache.D3SCache;
+import org.fao.fenix.d3p.flow.Flow;
+import org.fao.fenix.d3p.process.Process;
+import org.fao.fenix.d3p.process.ProcessFactory;
+import org.fao.fenix.d3p.process.StatefulProcess;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import java.sql.Connection;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
-public class FlowManager {
+public class Chain extends Flow {
     private @Inject StepFactory stepFactory;
     private @Inject ProcessFactory factory;
     private @Inject CacheFactory cacheFactory;
     private @Inject UIDUtils uidUtils;
 
-
-    public Resource<org.fao.fenix.commons.msd.dto.full.DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
+    @Override
+    public Resource<DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
         //Retrieve cache manager
         CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(metadata);
         DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
@@ -94,12 +99,6 @@ public class FlowManager {
         }
     }
 
-    private String getId(String uid, String version) {
-        if (uid!=null)
-            return version!=null ? uid+'|'+version : uid;
-        else
-            return null;
-    }
 
     private Step[] getSources (org.fao.fenix.commons.process.dto.Process processInfo, Step lastStep, Map<String, Step> steps) throws Exception {
         String[] sourcesId = processInfo!=null ? processInfo.getSid() : null;
