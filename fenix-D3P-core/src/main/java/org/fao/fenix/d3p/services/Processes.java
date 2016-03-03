@@ -7,6 +7,7 @@ import org.fao.fenix.commons.msd.dto.full.MeIdentification;
 import org.fao.fenix.commons.msd.dto.templates.ResponseBeanFactory;
 import org.fao.fenix.commons.msd.dto.templates.standard.combined.Metadata;
 import org.fao.fenix.commons.process.dto.Process;
+import org.fao.fenix.commons.process.dto.StepId;
 import org.fao.fenix.d3p.flow.FlowManager;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
@@ -28,50 +29,63 @@ public class Processes {
 
     /**
      * Apply a process workflow to a domain or a cached resource.
-     * To store processes results to be consumed a second level cache is needed.
      * No pagination will be available
      * @param uid Source resource uid
      * @param flow Processes ids and parameters
-     * @return Resource data
+     * @param managerList Alternative comma separated flow managers list
+     * @return Processed data
      */
     @POST
     @Path("{uid}")
-    public ResourceProxy apply(@PathParam("uid") String uid, Process[] flow) throws Exception {
-        return apply(uid,null,flow);
+    public ResourceProxy apply(@PathParam("uid") String uid, Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+        return apply(uid,null,flow, managerList);
     }
 
     /**
      * Apply a process workflow to a domain or a cached resource.
-     * To store processes results to be consumed a second level cache is needed.
      * No pagination will be available
-     * The last process cannot be a cached process
      * @param uid Source resource uid
      * @param version Source resource version
      * @param flow Processes ids and parameters
-     * @return Resource data
+     * @param managerList Alternative comma separated flow managers list
+     * @return Processed data
      */
     @POST
     @Path("{uid}/{version}")
-    public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow) throws Exception {
-        //Retrieve source metadata
-        MeIdentification<DSDDataset> metadata = resourcesService.loadMetadata(uid, version);
-        if (metadata==null)
-            return null;
-
-        //Check flow availability
-        if (flow==null || flow.length==0)
+    public ResourceProxy apply(@PathParam("uid") String uid, @PathParam("version") String version, Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+        //Overwrite source sid for the first process
+        if (flow!=null && flow.length>0)
+            flow[0].setSid(new StepId[]{new StepId(uid,version)});
+        //If no flow is provided return original dataset
+        else
             return resourcesService.getResourceByUID(uid,version,false,true,true,false);
 
-        //Prefetch source data
-        resourcesService.fetch(metadata);
+        //Apply flow
+        return apply(flow, managerList);
+    }
+
+    /**
+     * Apply a process workflow.
+     * No pagination will be available
+     * @param flow Processes ids and parameters
+     * @param managerList Alternative comma separated flow managers list
+     * @return Processed data
+     * @throws Exception
+     */
+    @POST
+    public ResourceProxy apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+        //Retrieve alternative managers name list
+        String[] managersName = managerList!=null ? managerList.split(",") : new String[0];
+        for (int i=0; i<managersName.length; i++)
+            managersName[i] = managersName[i].trim();
 
         //Apply flow
-        Resource<DSDDataset,Object[]> result = flowManager.process(metadata, flow);
+        Resource<DSDDataset,Object[]> result = flowManager.process(flow,managersName);
+
+        //Build response
         Collection<Object[]> data = result!=null ? result.getData() : null;
         org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = result!=null ? ResponseBeanFactory.getInstance(result.getMetadata(), org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class) : null;
         Long size = data!=null ? (long)data.size() : null;
-
-        //Return proxy to the resulting data
         return new ResourceProxy(
                 metadataProxy,
                 data, null, null, size

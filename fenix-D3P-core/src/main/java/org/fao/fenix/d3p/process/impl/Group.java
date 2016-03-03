@@ -8,6 +8,7 @@ import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.*;
+import org.fao.fenix.d3p.process.DisposableProcess;
 import org.fao.fenix.d3p.process.dto.Aggregation;
 import org.fao.fenix.d3p.process.dto.GroupParams;
 import org.fao.fenix.d3p.process.impl.group.RulesFactory;
@@ -19,7 +20,7 @@ import java.sql.Connection;
 import java.util.*;
 
 @ProcessName("group")
-public class Group extends org.fao.fenix.d3p.process.StatefulProcess<GroupParams> {
+public class Group extends DisposableProcess<GroupParams> {
 
     private @Inject RulesFactory rulesFactory;
     private @Inject DatabaseUtils databaseUtils;

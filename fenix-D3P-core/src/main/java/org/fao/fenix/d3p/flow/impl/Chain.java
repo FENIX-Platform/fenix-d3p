@@ -4,16 +4,18 @@ package org.fao.fenix.d3p.flow.impl;
 import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
+import org.fao.fenix.commons.process.dto.StepId;
 import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
+import org.fao.fenix.d3p.dto.TableStep;
 import org.fao.fenix.d3p.flow.Flow;
 import org.fao.fenix.d3p.process.Process;
 import org.fao.fenix.d3p.process.ProcessFactory;
-import org.fao.fenix.d3p.process.StatefulProcess;
+import org.fao.fenix.d3p.process.DisposableProcess;
 import org.fao.fenix.d3s.cache.manager.CacheManager;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 import org.fao.fenix.d3s.server.dto.DatabaseStandards;
@@ -30,8 +32,22 @@ public class Chain extends Flow {
     private @Inject CacheFactory cacheFactory;
     private @Inject UIDUtils uidUtils;
 
+
+    private boolean isSingleChain(org.fao.fenix.commons.process.dto.Process[] flow) {
+        for (int i=1; i<flow.length; i++)
+            if (flow[i].getSid().length>1 || !flow[i].getSid()[0].equals(flow[i-1].getRid()))
+                return false;
+        return true;
+    }
+
+
     @Override
-    public Resource<DSDDataset,Object[]> process(MeIdentification<DSDDataset> metadata, org.fao.fenix.commons.process.dto.Process... flow) throws Exception {
+    public Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Map<String, Process> processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+        //Verify applicability
+        if (isSingleChain(flow))
+            throw new UnsupportedOperationException();
+
+
         //Retrieve cache manager
         CacheManager<DSDDataset,Object[]> cacheManager = cacheFactory.getDatasetCacheManager(metadata);
         DatasetStorage cacheStorage = cacheManager!=null ? (DatasetStorage)cacheManager.getStorage() : null;
@@ -43,7 +59,7 @@ public class Chain extends Flow {
             return null;
 
 
-        Stack<StatefulProcess> disposableProcesses = new Stack<>();
+        Stack<DisposableProcess> disposableProcesses = new Stack<>();
         Map<String, Step> steps = new HashMap<>();
 
         //Create source step
@@ -64,8 +80,8 @@ public class Chain extends Flow {
             for (org.fao.fenix.commons.process.dto.Process processInfo : flow) {
                 Process process = factory.getInstance(processInfo.getName());
                 process.init(cacheStorage);
-                if (process instanceof StatefulProcess)
-                    disposableProcesses.push((StatefulProcess)process);
+                if (process instanceof DisposableProcess)
+                    disposableProcesses.push((DisposableProcess)process);
 
                 result = process.process(connection, processInfo.getParameters(), getSources(processInfo, result, steps));
                 setRid(result, processInfo);

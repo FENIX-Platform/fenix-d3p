@@ -9,6 +9,7 @@ import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.dto.Step;
+import org.fao.fenix.d3p.flow.Flow;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
@@ -21,11 +22,6 @@ import java.util.*;
 
 public abstract class Process <T> {
     @Inject UIDUtils uidUtils;
-
-    private DatasetStorage cacheStorage;
-    public final void init (DatasetStorage cacheStorage) {
-        this.cacheStorage = cacheStorage;
-    }
 
     /**
      * Get the expected external parameters Java type. This method is used to parse JSON payload.
@@ -42,20 +38,19 @@ public abstract class Process <T> {
      * @param params Current process external parameters.
      * @return
      */
-    public abstract Step process(Connection connection, T params, Step ... sourceStep) throws Exception;
+    public abstract Step process(Connection connection, T params, Step[] sourceStep) throws Exception;
 
 
     //UTILS
     protected String getRandomTmpTableName() {
         return "TMP_"+uidUtils.newId();
     }
-    protected DatasetStorage getCacheStorage() {
-        return cacheStorage;
+    protected DatasetStorage getCacheStorage(Step ... sourceStep) {
+        return sourceStep[0].getStorage();
     }
 
 
     protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
-
         Map<String, Column> columnsByName = table.getColumnsByName();
 
         StringBuilder query = new StringBuilder("SELECT ");
