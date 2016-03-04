@@ -38,7 +38,7 @@ public abstract class Process <T> {
      * @param params Current process external parameters.
      * @return
      */
-    public abstract Step process(Connection connection, T params, Step[] sourceStep) throws Exception;
+    public abstract Step process(T params, Step[] sourceStep) throws Exception;
 
 
     //UTILS

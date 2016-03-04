@@ -41,7 +41,6 @@ public class FlowManager {
 
     private @Inject Resources resourcesService;
 
- //TODO processes non dovrebbe essere un elenco
 
     //Throws UnsupportedOperationException when all compatible flow managers cannot apply flow process
     public Resource<DSDDataset,Object[]> process(org.fao.fenix.commons.process.dto.Process[] flow, String ... names) throws Exception {
@@ -49,15 +48,18 @@ public class FlowManager {
         normalize(flow);
         validate(flow);
         //Fetch operations
-        Map<StepId,TableStep> sourceSteps = getSourceSteps(flow);
-        Map<String, Process> processes = new HashMap<>();
+        Map<StepId,TableStep> sourceSteps = new HashMap<>();
+        Set<StepId> resultRidList = new HashSet<>();
+        load_SourceSteps_ResultRidList(flow,sourceSteps,resultRidList);
+
+        Process[] processes = new Process[flow.length];
         List<DisposableProcess> disposableProcesses = new LinkedList<>();
         loadProcessesInstance(flow,processes,disposableProcesses);
 
         //Apply flow
         for (Flow flowManager : getAvailableManagers(names))
             try {
-                return flowManager.process(sourceSteps, processes, flow);
+                return flowManager.process(sourceSteps, resultRidList, processes, flow);
             } catch (UnsupportedOperationException ex) {
                 //Nothing to do here to try with the next flow manager
             } finally {
@@ -154,7 +156,7 @@ public class FlowManager {
     }
 
     //Fetch utils
-    private Map<StepId,TableStep> getSourceSteps(org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+    private void load_SourceSteps_ResultRidList(org.fao.fenix.commons.process.dto.Process[] flow, Map<StepId,TableStep> sourceStepMap, Set<StepId> resultRidList) throws Exception {
         //Retrieve sources linked to datasets not included into the flow
         Set<StepId> sources = new HashSet<>();
         Set<StepId> results = new HashSet<>();
@@ -162,12 +164,16 @@ public class FlowManager {
             sources.addAll(Arrays.asList(processInfo.getSid()));
             results.add(processInfo.getRid());
         }
+        //Retrieve results rid
+        resultRidList.addAll(results);
+        resultRidList.removeAll(sources);
+        for (org.fao.fenix.commons.process.dto.Process processInfo : flow)
+            if (processInfo.isResult())
+                resultRidList.add(processInfo.getRid());
+        //Retrieve dataset source steps
         sources.removeAll(results);
-        //Return dataset source steps
-        Map<StepId,TableStep> sourceStepMap = new HashMap<>();
         for (StepId sourceId : sources)
             sourceStepMap.put(sourceId,createSourceStep(sourceId));
-        return sourceStepMap;
     }
     private TableStep createSourceStep (StepId stepId) throws Exception {
         //Retrieve source metadata
@@ -192,13 +198,11 @@ public class FlowManager {
         //Return source step
         return step;
     }
-    private void loadProcessesInstance (org.fao.fenix.commons.process.dto.Process[] flow, Map<String, Process> processes, Collection<DisposableProcess> disposableProcesses) throws Exception {
-        for (org.fao.fenix.commons.process.dto.Process processInfo : flow) {
-            Process process = factory.getInstance(processInfo.getName());
-            if (process instanceof DisposableProcess)
-                disposableProcesses.add((DisposableProcess) process);
-
-            processes.put(processInfo.getName(), process);
+    private void loadProcessesInstance (org.fao.fenix.commons.process.dto.Process[] flow, Process[] processes, Collection<DisposableProcess> disposableProcesses) throws Exception {
+        for (int i=0; i<flow.length; i++) {
+            processes[i] = factory.getInstance(flow[i].getName());
+            if (processes[i] instanceof DisposableProcess)
+                disposableProcesses.add((DisposableProcess) processes[i]);
         }
     }
 
@@ -225,22 +229,14 @@ public class FlowManager {
                 if (flowManagersMap.containsKey(name))
                     flowManagers.add(flowManagersMap.get(name));
         } else {
-            List<Object[]> flowManagersPriority = new LinkedList<>();
+            Map<Integer, Flow> flowManagersByPriority = new TreeMap<>();
             for (Flow flowManager : availableFlowManagers) {
                 FlowProperties flowProperties = flowManager.getClass().getAnnotation(FlowProperties.class);
-                if (flowProperties!=null && flowProperties.global())
-                    flowManagersPriority.add(new Object[]{flowProperties.priority(), flowManager});
+                if (flowProperties != null && flowProperties.global())
+                    flowManagersByPriority.put(flowProperties.priority(), flowManager);
             }
 
-            Collections.sort(flowManagersPriority, new Comparator<Object[]>() {
-                @Override
-                public int compare(Object[] o1, Object[] o2) {
-                    return ((Integer)o1[0]).compareTo((Integer)o2[0]);
-                }
-            });
-
-            for (Object[] flowManager : flowManagersPriority)
-                flowManagers.add((Flow)flowManager[1]);
+            flowManagers.addAll(flowManagersByPriority.values());
         }
 
         return flowManagers;

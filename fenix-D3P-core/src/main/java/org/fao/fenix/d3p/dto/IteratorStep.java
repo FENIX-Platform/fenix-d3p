@@ -20,5 +20,20 @@ public class IteratorStep extends Step<Iterator<Object[]>> {
         return getData();
     }
 
+    //Prevent more than one iterator consumption
+    private boolean containsData = false;
 
+    @Override
+    public void setData(Iterator<Object[]> data) {
+        super.setData(data);
+        containsData = data.hasNext();
+    }
+
+    @Override
+    public Iterator<Object[]> getData() {
+        Iterator<Object[]> currentData = super.getData();
+        if (containsData && !currentData.hasNext())
+            throw new NoDataException();
+        return super.getData();
+    }
 }

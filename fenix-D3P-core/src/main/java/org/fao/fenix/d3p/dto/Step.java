@@ -60,14 +60,18 @@ public abstract class Step<T> {
     }
 
     //Utils
-    public Resource<DSDDataset,Object[]> getResource(Connection connection) throws Exception {
+    public Resource<DSDDataset,Object[]> getResource() throws Exception {
         Collection<Object[]> data = new LinkedList<>();
 
-        Iterator<Object[]> rawData = getData(connection);
-        if (rawData!=null)
-            while (rawData.hasNext())
-                data.add(rawData.next());
-
+        Connection connection = storage.getConnection();
+        try {
+            Iterator<Object[]> rawData = getData(connection);
+            if (rawData != null)
+                while (rawData.hasNext())
+                    data.add(rawData.next());
+        } finally {
+            connection.close();
+        }
         return new Resource<>(getMetadata(), data);
     }
 
