@@ -15,11 +15,9 @@ import org.fao.fenix.d3p.flow.FlowProperties;
 import org.fao.fenix.d3p.flow.impl.graph.dto.Node;
 import org.fao.fenix.d3p.process.Process;
 import org.fao.fenix.d3p.process.ProcessFactory;
-import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
-import java.sql.Connection;
 import java.util.*;
 
 @FlowProperties(name = "graph", global = true, priority = 2)
@@ -30,23 +28,18 @@ public class Graph extends Flow {
     private @Inject UIDUtils uidUtils;
 
 
-//TODO modificare firma metodo
     @Override
-    public Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
         //Build graph
         Map<StepId, Node> nodesById = new HashMap<>();
         Collection<Node> sourceNodes = getGraph(nodesById, sourceSteps, flow);
-
-        //Retrieve source information
-        Step currentStep = sourceSteps.values().iterator().next();
-        Map<StepId, Object[]> flowBySid = getFlowBySid(flow, processes);
 
         try {
             //Apply flow
             Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
             for (Step source : sourceSteps.values())
                 traverse(nodesById, processes, flow, result, source);
-            return null;//TODO result;
+            return result;
         } catch(NoDataException ex) {
             throw new BadRequestException("Multiple iterator step consuming identified into the flow");
         }
@@ -89,12 +82,5 @@ public class Graph extends Flow {
             if (node.isSource())
                 nodes.add(node);
         return nodes;
-    }
-
-    private Map<StepId, Object[]> getFlowBySid(org.fao.fenix.commons.process.dto.Process[] flow, Process[] processes) {
-        Map<StepId, Object[]> flowBySid = new HashMap<>();
-        for (int i=0; i<flow.length; i++)
-            flowBySid.put(flow[i].getSid()[0], new Object[]{flow[i],processes[i]});
-        return flowBySid;
     }
 }

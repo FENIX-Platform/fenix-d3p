@@ -13,7 +13,6 @@ import org.fao.fenix.d3p.flow.Flow;
 import org.fao.fenix.d3p.flow.FlowProperties;
 import org.fao.fenix.d3p.process.Process;
 import org.fao.fenix.d3p.process.ProcessFactory;
-import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -29,7 +28,7 @@ public class Chain extends Flow {
 
 
     @Override
-    public Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
         //Verify applicability
         if (isSingleChain(sourceSteps, resultRidList, flow))
             throw new UnsupportedOperationException();
@@ -43,7 +42,9 @@ public class Chain extends Flow {
             currentStep = ((Process)nextProcess[1]).process(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getParameters(), new Step[] {currentStep});
 
         //Generate and return in-memory resource from the last step
-        return currentStep.getResource();
+        Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
+        result.put(currentStep.getRid(),currentStep.getResource());
+        return result;
     }
 
 

@@ -43,7 +43,7 @@ public class FlowManager {
 
 
     //Throws UnsupportedOperationException when all compatible flow managers cannot apply flow process
-    public Resource<DSDDataset,Object[]> process(org.fao.fenix.commons.process.dto.Process[] flow, String ... names) throws Exception {
+    public Map<StepId, Resource<DSDDataset,Object[]>> process(org.fao.fenix.commons.process.dto.Process[] flow, String ... names) throws Exception {
         //Flow operations
         normalize(flow);
         validate(flow);

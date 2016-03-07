@@ -15,6 +15,8 @@ import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 @Path("/processes")
 @Produces(MediaType.APPLICATION_JSON+"; charset=utf-8")
@@ -61,7 +63,10 @@ public class Processes {
             return resourcesService.getResourceByUID(uid,version,false,true,true,false);
 
         //Apply flow
-        return apply(flow, managerList);
+        Map<StepId, ResourceProxy> results = apply(flow, managerList);
+        if (results.size()>1)
+            throw new BadRequestException("This entry point is only for single chain flow.");
+        return results.size()>0 ? results.values().iterator().next() : null;
     }
 
     /**
@@ -73,23 +78,25 @@ public class Processes {
      * @throws Exception
      */
     @POST
-    public ResourceProxy apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+    public Map<StepId, ResourceProxy> apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
         //Retrieve alternative managers name list
         String[] managersName = managerList!=null ? managerList.split(",") : new String[0];
         for (int i=0; i<managersName.length; i++)
             managersName[i] = managersName[i].trim();
 
         //Apply flow
-        Resource<DSDDataset,Object[]> result = flowManager.process(flow,managersName);
+        Map<StepId, Resource<DSDDataset,Object[]>> results = flowManager.process(flow,managersName);
 
         //Build response
-        Collection<Object[]> data = result!=null ? result.getData() : null;
-        org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = result!=null ? ResponseBeanFactory.getInstance(result.getMetadata(), org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class) : null;
-        Long size = data!=null ? (long)data.size() : null;
-        return new ResourceProxy(
-                metadataProxy,
-                data, null, null, size
-        );
+        Map<StepId, ResourceProxy> response = new HashMap<>();
+        if (results!=null)
+            for (Map.Entry<StepId, Resource<DSDDataset,Object[]>> result : results.entrySet()) {
+                Collection<Object[]> data = result.getValue().getData();
+                org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = ResponseBeanFactory.getInstance(result.getValue().getMetadata(), org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class);
+                response.put(result.getKey(), new ResourceProxy( metadataProxy, data, null, null, (long) data.size()));
+            }
+
+        return response;
     }
 
 }

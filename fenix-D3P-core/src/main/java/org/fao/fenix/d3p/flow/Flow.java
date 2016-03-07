@@ -12,7 +12,7 @@ import java.util.Set;
 
 public abstract class Flow {
 
-    public abstract Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[]processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception;
+    public abstract Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[]processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception;
 
     //Utils
     public static String getId(String uid, String version) {
