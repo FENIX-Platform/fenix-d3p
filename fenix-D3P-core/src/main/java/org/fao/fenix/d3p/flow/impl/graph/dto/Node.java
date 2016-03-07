@@ -1,6 +1,7 @@
 package org.fao.fenix.d3p.flow.impl.graph.dto;
 
 import org.fao.fenix.commons.process.dto.StepId;
+import org.fao.fenix.d3p.dto.Step;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -12,6 +13,8 @@ public class Node {
     public Collection<Node> next = new LinkedList<>();
     public boolean result = false;
     public int index = -1;
+
+    public Collection<Step> sources = new LinkedList<>();
 
 
     public Node() {

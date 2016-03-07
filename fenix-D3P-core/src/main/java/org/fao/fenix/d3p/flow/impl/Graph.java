@@ -29,6 +29,46 @@ public class Graph extends Flow {
     private @Inject CacheFactory cacheFactory;
     private @Inject UIDUtils uidUtils;
 
+
+//TODO modificare firma metodo
+    @Override
+    public Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+        //Build graph
+        Map<StepId, Node> nodesById = new HashMap<>();
+        Collection<Node> sourceNodes = getGraph(nodesById, sourceSteps, flow);
+
+        //Retrieve source information
+        Step currentStep = sourceSteps.values().iterator().next();
+        Map<StepId, Object[]> flowBySid = getFlowBySid(flow, processes);
+
+        try {
+            //Apply flow
+            Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
+            for (Step source : sourceSteps.values())
+                traverse(nodesById, processes, flow, result, source);
+            return null;//TODO result;
+        } catch(NoDataException ex) {
+            throw new BadRequestException("Multiple iterator step consuming identified into the flow");
+        }
+    }
+
+    private void traverse (Map<StepId, Node> nodesById, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow, Map<StepId, Resource<DSDDataset,Object[]>> result, Step source) throws Exception {
+        //Retrieve previous process info
+        Node previousNode = nodesById.get(source.getRid());
+        source.setOneToMany(previousNode.isOneToMany());
+        //Store result
+        if (previousNode.isResult())
+            result.put(source.getRid(), source.getResource());
+        //Apply next process steps
+        for (Node nextNode : previousNode.next) {
+            nextNode.sources.add(source);
+            //Verify source availability and apply process
+            if (nextNode.prev.size()==nextNode.sources.size())
+                traverse(nodesById, processes, flow, result, processes[nextNode.index].process(flow[nextNode.index].getParameters(), nextNode.sources.toArray(new Step[nextNode.sources.size()])));
+        }
+    }
+
+    //Utils
     private Collection<Node> getGraph (Map<StepId, Node> nodesById, Map<StepId,TableStep> sourceSteps, org.fao.fenix.commons.process.dto.Process[] flow) {
         //Create nodes
         for (org.fao.fenix.commons.process.dto.Process processInfo : flow)
@@ -49,41 +89,6 @@ public class Graph extends Flow {
             if (node.isSource())
                 nodes.add(node);
         return nodes;
-    }
-
-
-    @Override
-    public Resource<DSDDataset,Object[]> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
-        //Build graph
-        Map<StepId, Node> nodesById = new HashMap<>();
-        Collection<Node> sourceNodes = getGraph(nodesById, sourceSteps, flow);
-
-        //Retrieve source information
-        Step currentStep = sourceSteps.values().iterator().next();
-        Map<StepId, Object[]> flowBySid = getFlowBySid(flow, processes);
-
-        try {
-            //Apply flow
-            for (Object[] nextProcess = flowBySid.get(sourceSteps.keySet().iterator()); nextProcess != null; nextProcess = flowBySid.get(((org.fao.fenix.commons.process.dto.Process) nextProcess[0]).getRid()))
-                currentStep = ((Process) nextProcess[1]).process(((org.fao.fenix.commons.process.dto.Process) nextProcess[0]).getParameters(), new Step[]{currentStep});
-
-            //Generate and return in-memory resource from the last step
-            return currentStep.getResource();
-        } catch(NoDataException ex) {
-            throw new BadRequestException("Multiple iterator step consuming identified into the flow");
-        }
-    }
-
-
-    //Utils
-    private boolean isSingleChain(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, org.fao.fenix.commons.process.dto.Process[] flow) {
-        if (sourceSteps.size()==1 && resultRidList.size()==1) {
-            for (org.fao.fenix.commons.process.dto.Process processInfo : flow)
-                if (processInfo.getSid().length!=1)
-                    return false;
-            return true;
-        }
-        return false;
     }
 
     private Map<StepId, Object[]> getFlowBySid(org.fao.fenix.commons.process.dto.Process[] flow, Process[] processes) {

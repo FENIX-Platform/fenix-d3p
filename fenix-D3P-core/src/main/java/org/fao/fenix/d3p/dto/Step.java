@@ -22,6 +22,7 @@ public abstract class Step<T> {
     private DSDDataset dsd;
     private StepId rid;
     private DatasetStorage storage;
+    private boolean oneToMany = false;
 
 
     public abstract StepType getType();
@@ -36,7 +37,8 @@ public abstract class Step<T> {
     }
 
     public DSDDataset getDsd() {
-        return dsd;
+        //Prevent dsd overwrite in one to many relationship
+        return oneToMany ? dsd.clone() : dsd;
     }
 
     public void setDsd(DSDDataset dsd) {
@@ -57,6 +59,14 @@ public abstract class Step<T> {
 
     public void setStorage(DatasetStorage storage) {
         this.storage = storage;
+    }
+
+    public boolean isOneToMany() {
+        return oneToMany;
+    }
+
+    public void setOneToMany(boolean oneToMany) {
+        this.oneToMany = oneToMany;
     }
 
     //Utils
