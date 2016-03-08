@@ -21,7 +21,7 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
     private @Inject StepFactory stepFactory;
 
     @Override
-    public Step process(Connection connection, Query params, Step... sourceStep) throws Exception {
+    public Step process(Query params, Step... sourceStep) throws Exception {
         //Retrieve source informations
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
@@ -29,11 +29,11 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
             throw new UnsupportedOperationException("Select filter can be applied only on a table or an other select query");
         String sourceData = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
-        //Return correspondent "query" step
-        QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
-        step.setDsd(filter(dsd,params.getColumns())); //DSD adjustment before query creation
-        step.setData(createQuery(params.getQuery(), dsd, sourceData));
-        //Set query parameters
+        //Update dsd before query creation
+        filter(dsd,params.getColumns());
+        //Create query
+        String query = createQuery(params.getQuery(), dsd, sourceData);
+        //Update query parameters
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
         Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
@@ -55,22 +55,25 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
             if (containsType && existingTypes!=null && existingTypes.length>0)
                 queryTypes.addAll(queryParamsType);
         }
+        //Create query step
+        QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
+        step.setDsd(dsd);
+        step.setData(query);
         step.setParams(queryParameters.toArray());
         step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
-        step.setRid(getRandomTmpTableName());
+
         return step;
     }
 
 
-    //DSD adjustment (non distinct values)
-    private DSDDataset filter(DSDDataset dsd, Collection<String> columns) throws Exception {
+    //DSD adjustment (not distinct values)
+    private void filter(DSDDataset dsd, Collection<String> columns) throws Exception {
         if (columns!=null && columns.size()>0) {
             Collection<DSDColumn> dsdColumns = new LinkedList<>();
             for (String columnId : columns)
                 dsdColumns.add(dsd.findColumn(columnId));
             dsd.setColumns(dsdColumns);
         }
-        return dsd;
     }
 
 

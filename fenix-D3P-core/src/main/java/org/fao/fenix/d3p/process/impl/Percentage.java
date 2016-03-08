@@ -19,6 +19,7 @@ import org.fao.fenix.d3s.cache.dto.dataset.Type;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
 import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -31,96 +32,100 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
     private @Inject Resources resourcesService;
 
     @Override
-    public Step process(Connection connection, PercentageFilter params, Step... sourceStep) throws Exception {
+    public Step process(PercentageFilter params, Step... sourceStep) throws Exception {
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("Percentage filter can be applied only on a table or an other select query");
-        String tableName = source!=null ? (String)source.getData() : null;
-        DSDDataset dsd = source!=null ? source.getDsd() : null;
+        String tableName = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
+        DSDDataset dsd = source.getDsd();
         DSDColumn valueColumn = getValueColumn(dsd);
         Collection<String> keyColumnsId = getKeyColumnsId(dsd);
 
         if (tableName==null || valueColumn==null || keyColumnsId==null)
-            throw new Exception ("Source step for data percentage calculation is unavailable or incomplete or without a number value column.");
+            throw new BadRequestException("Source step for data percentage calculation is unavailable or incomplete or without a number value column.");
 
         String valueColumnId = valueColumn.getId();
 
         //Retrieve source info
-        tableName = type==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
 
-        //Define mode
-        Double total = params!=null ? params.getTotal() : null;
-        if (total==null && (params==null || params.getTotalRows()==null || params.getTotalRows().size()==0)) { //Mode 2 prefetch
-            //Select total value
-            ResultSet rawData = databaseUtils.fillStatement(connection.prepareStatement("SELECT SUM("+valueColumnId+") FROM "+tableName), null, existingParams).executeQuery();
-            total = rawData.next() ? rawData.getDouble(1) : 0;
-        }
-
-        //Apply
-        if (total==null) { //Apply mode 3 (only from table)
-            if (type!=StepType.table)
-                throw new UnsupportedOperationException("Percentage filter in mode 3 can be applied only on a table");
-
-            //TODO Verify table isn't a D3S table
-            //resourcesService.loadMetadata()
-
-            //Check rows filter validity: only key columns can be used
-            for (String filterColumn : params.getTotalRows().keySet())
-                if (!keyColumnsId.contains(filterColumn))
-                    throw new UnsupportedOperationException("Percentage filter in mode 3 can filter totals value only by using key columns");
-
-            //Select totals
-            DataFilter totalsFilter = new DataFilter();
-            totalsFilter.setRows(params.getTotalRows());
-            Collection<String> columns = new LinkedList<>(keyColumnsId);
-            columns.add(valueColumnId);
-            totalsFilter.setColumns(columns);
-
-            Collection<Object> queryParameters = new LinkedList<>();
-            String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
-            ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeQuery();
-
-            //Update table
-            Collection<String> dataKeyColumns = new LinkedHashSet<>(keyColumnsId);
-            dataKeyColumns.removeAll(params.getTotalRows().keySet());
-            while (totalsRawData.next()) {
-                Collection<Object> keyParams = new LinkedList<>();
-                for (String totalSelectColumnId : dataKeyColumns)
-                    keyParams.add(totalsRawData.getObject(totalSelectColumnId));
-                //Run update query
-                PreparedStatement updateStatement = connection.prepareStatement(createUpdateQuery(totalsRawData.getDouble(valueColumnId),valueColumnId,tableName,dataKeyColumns));
-                databaseUtils.fillStatement(updateStatement, null, keyParams.toArray()).executeUpdate();
+        //Logic
+        Connection connection = source.getStorage().getConnection();
+        try {
+            //Define mode
+            Double total = params != null ? params.getTotal() : null;
+            if (total == null && (params == null || params.getTotalRows() == null || params.getTotalRows().size() == 0)) { //Mode 2 prefetch
+                //Select total value
+                ResultSet rawData = databaseUtils.fillStatement(connection.prepareStatement("SELECT SUM(" + valueColumnId + ") FROM " + tableName), null, existingParams).executeQuery();
+                total = rawData.next() ? rawData.getDouble(1) : 0;
             }
 
-            //Run delete of totals if needed
-            if (!params.isInclusive()) {
-                queryParameters = new LinkedList<>();
-                query = createCacheDeleteQuery(params.getTotalRows(), new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
-                databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeUpdate();
-            }
+            //Apply
+            if (total == null) { //Apply mode 3 (only from table)
+                if (type != StepType.table)
+                    throw new UnsupportedOperationException("Percentage filter in mode 3 can be applied only on a table");
 
-            //Return source step
-            return source;
-        } else { //Apply mode 1 or 2
-            //Replace value column id with formula
-            valueColumn.setId(getValueSelect(total, valueColumnId)+" as "+valueColumnId);
-            //Prepare query
-            Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
-            Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
-            String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
-            //Restore value column id
-            valueColumn.setId(valueColumnId);
-            //Create and return query step
-            QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
-            step.setDsd(dsd);
-            step.setData(query);
-            step.setParams(queryParameters.toArray());
-            step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
-            step.setRid(getRandomTmpTableName());
-            return step;
+                //TODO Verify table isn't a D3S table
+                //resourcesService.loadMetadata()
+
+                //Check rows filter validity: only key columns can be used
+                for (String filterColumn : params.getTotalRows().keySet())
+                    if (!keyColumnsId.contains(filterColumn))
+                        throw new UnsupportedOperationException("Percentage filter in mode 3 can filter totals value only by using key columns");
+
+                //Select totals
+                DataFilter totalsFilter = new DataFilter();
+                totalsFilter.setRows(params.getTotalRows());
+                Collection<String> columns = new LinkedList<>(keyColumnsId);
+                columns.add(valueColumnId);
+                totalsFilter.setColumns(columns);
+
+                Collection<Object> queryParameters = new LinkedList<>();
+                String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
+                ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeQuery();
+
+                //Update table
+                Collection<String> dataKeyColumns = new LinkedHashSet<>(keyColumnsId);
+                dataKeyColumns.removeAll(params.getTotalRows().keySet());
+                while (totalsRawData.next()) {
+                    Collection<Object> keyParams = new LinkedList<>();
+                    for (String totalSelectColumnId : dataKeyColumns)
+                        keyParams.add(totalsRawData.getObject(totalSelectColumnId));
+                    //Run update query
+                    PreparedStatement updateStatement = connection.prepareStatement(createUpdateQuery(totalsRawData.getDouble(valueColumnId), valueColumnId, tableName, dataKeyColumns));
+                    databaseUtils.fillStatement(updateStatement, null, keyParams.toArray()).executeUpdate();
+                }
+
+                //Run delete of totals if needed
+                if (!params.isInclusive()) {
+                    queryParameters = new LinkedList<>();
+                    query = createCacheDeleteQuery(params.getTotalRows(), new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
+                    databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeUpdate();
+                }
+
+                //Return source step
+                return source;
+            } else { //Apply mode 1 or 2
+                //Replace value column id with formula
+                valueColumn.setId(getValueSelect(total, valueColumnId) + " as " + valueColumnId);
+                //Prepare query
+                Collection<Object> queryParameters = existingParams != null && existingParams.length > 0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
+                Collection<Integer> queryTypes = existingTypes != null && existingTypes.length > 0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
+                String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
+                //Restore value column id
+                valueColumn.setId(valueColumnId);
+                //Create and return query step
+                QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
+                step.setDsd(dsd);
+                step.setData(query);
+                step.setParams(queryParameters.toArray());
+                step.setTypes(queryTypes != null && queryTypes.size() > 0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
+                return step;
+            }
+        } finally {
+            connection.close();
         }
     }
 

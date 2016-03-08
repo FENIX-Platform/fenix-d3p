@@ -21,23 +21,27 @@ public class Distinct extends org.fao.fenix.d3p.process.Process {
     private @Inject StepFactory stepFactory;
 
     @Override
-    public Step process(Connection connection, Object params, Step... sourceStep) throws Exception {
+    public Step process(Object params, Step... sourceStep) throws Exception {
+        //Retrieve source information
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
-        if (source==null)
-            return null;
-        if (source.getType()==StepType.table) {
-            String tableName = (String) source.getData();
-            DSDDataset dsd = source.getDsd();
-            Collection<DSDColumn> columns = dsd!=null ? dsd.getColumns() : null;
-            if (columns==null)
-                throw new Exception ("'distinct' process source data has no columns");
-
-            for (DSDColumn column : columns)
+        StepType type = source!=null ? source.getType() : null;
+        if (type==null || type!=StepType.table)
+            throw new UnsupportedOperationException("distinct process support only one table input step");
+        String tableName = (String) source.getData();
+        DSDDataset dsd = source.getDsd();
+        //Update columns distinct values
+        Connection connection = source.getStorage().getConnection();
+        try {
+            for (DSDColumn column : dsd.getColumns())
                 updateColumnDistinct(connection, tableName, column);
-        } else
-            throw new UnsupportedOperationException("Distinct values can be restored only from cached data");
-
-        return source;
+        } finally {
+            connection.close();
+        }
+        //Build resulting step
+        TableStep result = (TableStep)stepFactory.getInstance(StepType.table);
+        result.setData(tableName);
+        result.setDsd(dsd);
+        return result;
     }
 
     private void updateColumnDistinct(Connection connection, String tableName, DSDColumn column) throws SQLException {

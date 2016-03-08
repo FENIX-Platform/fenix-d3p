@@ -55,9 +55,23 @@ public class Graph extends Flow {
         //Apply next process steps
         for (Node nextNode : previousNode.next) {
             nextNode.sources.add(source);
-            //Verify source availability and apply process
-            if (nextNode.prev.size()==nextNode.sources.size())
-                traverse(nodesById, processes, flow, result, processes[nextNode.index].process(flow[nextNode.index].getParameters(), nextNode.sources.toArray(new Step[nextNode.sources.size()])));
+            //Verify source steps availability and apply process
+            if (nextNode.prev.size()==nextNode.sources.size()) {
+                //Run next process and retrieve result
+                Step nextNodeResult = processes[nextNode.index].process(flow[nextNode.index].getParameters(), nextNode.sources.toArray(new Step[nextNode.sources.size()]));
+                //Result completion and dsd normalization
+                if (nextNodeResult.getRid()==null)
+                    nextNodeResult.setRid(flow[nextNode.index].getRid());
+                if (nextNodeResult.getStorage()==null)
+                    nextNodeResult.setStorage(source.getStorage());
+                if (nextNodeResult.getDsd()==null)
+                    nextNodeResult.setDsd(source.getDsd());
+                nextNodeResult.getDsd().setContextSystem("D3P");
+                nextNodeResult.getDsd().setDatasources(null);
+                nextNodeResult.getDsd().setRID(null);
+                //Propagation into the graph
+                traverse(nodesById, processes, flow, result, nextNodeResult);
+            }
         }
     }
 

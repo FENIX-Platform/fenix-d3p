@@ -34,16 +34,30 @@ public class Chain extends Flow {
             throw new UnsupportedOperationException();
 
         //Retrieve source information
-        Step currentStep = sourceSteps.values().iterator().next();
+        Step previousStep = sourceSteps.values().iterator().next();
         Map<StepId, Object[]> flowBySid = getFlowBySid(flow, processes);
 
         //Apply flow
-        for (Object[] nextProcess = flowBySid.get(sourceSteps.keySet().iterator()); nextProcess!=null; nextProcess = flowBySid.get(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getRid()))
-            currentStep = ((Process)nextProcess[1]).process(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getParameters(), new Step[] {currentStep});
+        for (Object[] nextProcess = flowBySid.get(sourceSteps.keySet().iterator()); nextProcess!=null; nextProcess = flowBySid.get(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getRid())) {
+            //Run next process and retrieve result
+            Step currentStep = ((Process) nextProcess[1]).process(((org.fao.fenix.commons.process.dto.Process) nextProcess[0]).getParameters(), new Step[]{previousStep});
+            //Result completion and dsd normalization
+            if (currentStep.getRid()==null)
+                currentStep.setRid(((org.fao.fenix.commons.process.dto.Process) nextProcess[0]).getRid());
+            if (currentStep.getStorage()==null)
+                currentStep.setStorage(previousStep.getStorage());
+            if (currentStep.getDsd()==null)
+                currentStep.setDsd(previousStep.getDsd());
+            currentStep.getDsd().setContextSystem("D3P");
+            currentStep.getDsd().setDatasources(null);
+            currentStep.getDsd().setRID(null);
+
+            previousStep = currentStep;
+        }
 
         //Generate and return in-memory resource from the last step
         Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
-        result.put(currentStep.getRid(),currentStep.getResource());
+        result.put(previousStep.getRid(),previousStep.getResource());
         return result;
     }
 

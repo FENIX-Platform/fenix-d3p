@@ -13,10 +13,10 @@ import org.fao.fenix.d3p.process.dto.Aggregation;
 import org.fao.fenix.d3p.process.dto.GroupParams;
 import org.fao.fenix.d3p.process.impl.group.RulesFactory;
 import org.fao.fenix.d3p.process.type.ProcessName;
+import org.fao.fenix.d3s.cache.storage.dataset.h2.DefaultStorage;
 import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
-import java.sql.Connection;
 import java.util.*;
 
 @ProcessName("group")
@@ -30,43 +30,45 @@ public class Group extends DisposableProcess<GroupParams> {
     private String pid;
 
     @Override
-    public void dispose(Connection connection) throws Exception {
-        rulesFactory.delRule(pid);
+    public void dispose() throws Exception {
+        if (pid!=null)
+            rulesFactory.delRule(pid);
     }
 
     @Override
-    public Step process(Connection connection, GroupParams params, Step... sourceStep) throws Exception {
-        pid = uidUtils.getId();
+    public Step process(GroupParams params, Step... sourceStep) throws Exception {
         //Retrieve source informations
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
-            throw new UnsupportedOperationException("query filter can be applied only on a table or an other select query");
+            throw new UnsupportedOperationException("group process support only one table or query input step");
         String sourceData = (String)source.getData();
         sourceData = type==StepType.table ? sourceData : '('+sourceData+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
         Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
+        //check for H2 availability
+        boolean useDefaultStorage = source.getStorage() instanceof DefaultStorage;
+        pid = useDefaultStorage ? uidUtils.getId() : null;
         //Append label aggregations if needed
         Collection<Aggregation> aggregations = new LinkedList<>(Arrays.asList(params.getAggregations()));
         addLanguageColumnsAggregations(aggregations, params, dsd);
         //Define groups rule
         Map<String, String> groups = new HashMap<>();
         for (Aggregation aggregation : aggregations) {
-            String ruleId = rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns());
+            String ruleId = useDefaultStorage ? rulesFactory.setRule(aggregation.getRule(), pid, aggregation.getParameters(), dsd, aggregation.getColumns()) : null;
             groups.put(aggregation.getCid(), createAggregationQuerySegment(ruleId, aggregation));
         }
         //Create group query and prepare dsd
         String query = createGroupQuery(groups, groupsKey, dsd, sourceData);
-        dsd = filter(dsd, groups, groupsKey);
+        updateDsd(dsd, groups, groupsKey);
         //Return correspondent "query" step
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
-        step.setDsd(dsd);
         step.setData(query);
+        step.setDsd(dsd);
         if (type==StepType.query) {
             step.setParams(((QueryStep) source).getParams());
             step.setTypes(((QueryStep) source).getTypes());
         }
-        step.setRid(getRandomTmpTableName());
         return step;
     }
 
@@ -118,13 +120,10 @@ public class Group extends DisposableProcess<GroupParams> {
 
 
 
-    private DSDDataset filter (DSDDataset source, Map<String,String> groups, Set<String> groupKeys) {
-        DSDDataset dsd = new DSDDataset();
-        dsd.setAggregationRules(source.getAggregationRules());
-        dsd.setContextSystem("D3P");
+    private void updateDsd (DSDDataset dsd, Map<String,String> groups, Set<String> groupKeys) {
         //Select columns
         Collection<DSDColumn> columns = new LinkedList<>();
-        for (DSDColumn column : source.getColumns()) {
+        for (DSDColumn column : dsd.getColumns()) {
             if (groupKeys.contains(column.getId())) {
                 column.setKey(true);
                 columns.add(column);
@@ -137,9 +136,7 @@ public class Group extends DisposableProcess<GroupParams> {
         //Support labels into DSD
         Language[] languages = DatabaseStandards.getLanguageInfo();
         if (languages!=null && languages.length>0)
-            dsd.extend(false, languages);
-        //Return dsd
-        return dsd;
+            dsd.extend(languages);
     }
 
     private String createGroupQuery(Map<String,String> groups, Set<String> groupKeys, DSDDataset dsd, String source) throws Exception {

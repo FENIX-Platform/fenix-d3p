@@ -10,6 +10,8 @@ import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
 import org.fao.fenix.d3p.process.dto.PrecisionLevel;
 import org.fao.fenix.d3p.process.type.ProcessName;
+import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
+import org.fao.fenix.d3s.cache.storage.dataset.h2.DefaultStorage;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
 import javax.inject.Inject;
@@ -113,19 +115,26 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
 
     //PROCESS LOGIC
     @Override
-    public Step process(Connection connection, PrecisionLevel params, Step... sourceStep) throws Exception {
-        if (!registered)
-            initCustomFuncion(connection);
-        //If the filter is empty return the source
-        if (params==null || params.size()==0)
-            return sourceStep[0];
+    public Step process(PrecisionLevel params, Step... sourceStep) throws Exception {
         //Retrieve source informations
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
-        StepType type = source!=null ? source.getType() : null;
-        if (type==null || (type!=StepType.table && type!=StepType.query))
+        StepType sourceType = source!=null ? source.getType() : null;
+        if (sourceType==null || (sourceType!=StepType.table && sourceType!=StepType.query))
             throw new UnsupportedOperationException("Precision filter can be applied only on a table or an other select query");
-        String sourceData = (String)source.getData();
+        String tableName = sourceType==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
+        //Register custom function to H2 storage
+        if (!registered) {
+            DatasetStorage cacheStorage = source.getStorage();
+            if (cacheStorage instanceof DefaultStorage) {
+                Connection connection = cacheStorage.getConnection();
+                try {
+                    initCustomFuncion(connection);
+                } finally {
+                    connection.close();
+                }
+            }
+        }
         //Verify code columns correspondence
         Map<String, String> conversionQuerySegments = new HashMap<>();
         for (Map.Entry<String, Integer> param : params.entrySet()) {
@@ -144,17 +153,24 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
             }else //Time column
                 conversionQuerySegments.put(param.getKey(), createConversionQuerySegment(column, param.getValue()));
         }
-        //Return correspondent "query" step
+        //Update dsd
+        updateDsd(dsd,params);
+        //Create query
+        String query = createGroupQuery(params, conversionQuerySegments, dsd, tableName);
+        //Create query step
         QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
-        step.setDsd(filter(dsd,params));
-        step.setData(createGroupQuery(params, conversionQuerySegments, dsd, sourceData));
-        step.setRid(getRandomTmpTableName());
+        step.setDsd(dsd);
+        step.setData(query);
+        if (sourceType==StepType.query) {
+            step.setParams(((QueryStep) source).getParams());
+            step.setTypes(((QueryStep) source).getTypes());
+        }
         return step;
     }
 
 
-    //DSD adjustment (non distinct values)
-    private DSDDataset filter(DSDDataset dsd, PrecisionLevel params) throws Exception {
+    //DSD adjustment (not distinct values)
+    private void updateDsd(DSDDataset dsd, PrecisionLevel params) throws Exception {
         for (DSDColumn column : dsd.getColumns()) {
             column.setKey(false);
             if (params.containsKey(column.getId()) && column.getDataType()!=DataType.code) {
@@ -184,7 +200,6 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
                 }
             }
         }
-        return dsd;
     }
 
 
