@@ -45,10 +45,6 @@ public abstract class Process <T> {
     protected String getRandomTmpTableName() {
         return "TMP_"+uidUtils.newId();
     }
-    protected DatasetStorage getCacheStorage(Step ... sourceStep) {
-        return sourceStep[0].getStorage();
-    }
-
 
     protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
         Map<String, Column> columnsByName = table.getColumnsByName();

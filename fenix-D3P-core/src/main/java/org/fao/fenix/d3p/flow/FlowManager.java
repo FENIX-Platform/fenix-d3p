@@ -193,7 +193,10 @@ public class FlowManager {
         TableStep step = (TableStep)stepFactory.getInstance(StepType.table);
         step.setData(((DatasetStorage)cacheStorage).getTableName(Flow.getId(stepId.getUid(),stepId.getVersion())));
         step.setRid(stepId);
-        step.setDsd(languages!=null ? metadata.getDsd().extend(false, languages) : metadata.getDsd());
+        DSDDataset dsd = metadata.getDsd();
+        if (languages!=null)
+            dsd.extend(languages);
+        step.setDsd(dsd);
         step.setStorage((DatasetStorage) cacheStorage);
         //Return source step
         return step;

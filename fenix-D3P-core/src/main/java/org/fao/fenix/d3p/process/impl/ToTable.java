@@ -6,6 +6,7 @@ import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.d3p.process.DisposableProcess;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
+import org.fao.fenix.d3s.cache.dto.dataset.TableScope;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
@@ -20,51 +21,49 @@ public class ToTable extends DisposableProcess {
     private @Inject StepFactory stepFactory;
 
     private String tableName;
+    private DatasetStorage cacheStorage;
 
     @Override
-    public Step process(Connection connection, Object params, Step... sourceStep) throws Exception {
-        //Reset bean level properties
-        tableName = null;
+    public Step process(Object params, Step... sourceStep) throws Exception {
         //Restireve source informations
         Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
         StepType sourceType = source!=null ? source.getType() : null;
-        DSDDataset dsd = source!=null ? source.getDsd() : null;
-
-        if (sourceType!=null && dsd!=null) {
-            //Return source if it is already a table step
-            if (sourceType==StepType.table) //TODO create a new temporary table (clone the current table)
-                return source;
-            //Retrieve new TMP table metadata
-            DatasetStorage cacheStorage = getCacheStorage();
-            tableName = getRandomTmpTableName();
-            Table table = new Table(tableName, dsd);
-            //Insert data into tmp table
-            if (sourceType==StepType.iterator) {
-                Iterator<Object[]> rawData = ((IteratorStep) source).getData();
-                if (rawData != null) {
-                    cacheStorage.create(table, null);
-                    cacheStorage.store(table, databaseUtils.getDataIterator(rawData), 0, true, new Date());
-                }
-            } else if (sourceType==StepType.query) {
-                String rawData = ((QueryStep)source).getData();
-                if (rawData!=null && !rawData.trim().equals("")) {
-                    cacheStorage.create(table, null);
-                    PreparedStatement insertStatement = connection.prepareStatement("insert into "+getCacheStorage().getTableName(tableName)+' '+rawData);
-                    databaseUtils.fillStatement(insertStatement,((QueryStep)source).getTypes(),((QueryStep)source).getParams()).executeUpdate();
-                }
+        if (sourceType==null)
+            throw new UnsupportedOperationException("toTable process can be applied only on one input");
+        //Prepare metadata
+        tableName=getRandomTmpTableName();
+        DSDDataset dsd = source.getDsd();
+        Table table = new Table(tableName, dsd);
+        //Create destination temporary table
+        cacheStorage = source.getStorage();
+        cacheStorage.create(table, null, TableScope.temporary);
+        //Generate resulting step object
+        TableStep step = (TableStep)stepFactory.getInstance(StepType.table);
+        step.setData(cacheStorage.getTableName(tableName));
+        step.setDsd(dsd);
+        //Fill destination table with source data
+        Connection connection = cacheStorage.getConnection();
+        try {
+            switch (sourceType) {
+                case table:
+                    connection.createStatement().executeUpdate("INSERT INTO " + step.getData() + " SELECT * FROM " + source.getData());
+                    break;
+                case query:
+                    databaseUtils.fillStatement(connection.prepareStatement("INSERT INTO " + step.getData() + ' ' + source.getData()), ((QueryStep)source).getTypes(), ((QueryStep)source).getParams()).executeUpdate();
+                    break;
+                case iterator:
+                    cacheStorage.store(table, ((IteratorStep) source).getData(), 0, true, new Date());
+                    break;
             }
-            //Generate & return resulting step object
-            TableStep step = (TableStep)stepFactory.getInstance(StepType.table);
-            step.setRid(source.getRid() + "_cached");
-            step.setData(cacheStorage.getTableName(tableName));
-            step.setDsd(dsd);
-            return step;
-        } else
-            throw new Exception("Source step to cache is unavailable or incomplete");
+        } finally {
+            connection.close();
+        }
+        //Fill step
+        return step;
     }
 
     @Override
-    public void dispose(Connection connection) throws Exception {
-        getCacheStorage().delete(tableName);
+    public void dispose() throws Exception {
+        cacheStorage.delete(tableName);
     }
 }
