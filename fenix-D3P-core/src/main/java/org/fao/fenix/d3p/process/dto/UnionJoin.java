@@ -1,5 +1,7 @@
 package org.fao.fenix.d3p.process.dto;
 
+import org.fao.fenix.d3p.process.type.UnionUsing;
+
 public class UnionJoin {
 
     private UnionUsing using = UnionUsing.subjectOnly;

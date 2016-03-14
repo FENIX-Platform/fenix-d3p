@@ -2,17 +2,17 @@ package org.fao.fenix.d3p.process.dto;
 
 public class UnionParams {
 
-    private UnionMode mode = UnionMode.intersect;
+    private String logic;
     private boolean label = false;
     private UnionJoin[] join;
 
 
-    public UnionMode getMode() {
-        return mode;
+    public String getLogic() {
+        return logic;
     }
 
-    public void setMode(UnionMode mode) {
-        this.mode = mode;
+    public void setLogic(String logic) {
+        this.logic = logic;
     }
 
     public boolean isLabel() {

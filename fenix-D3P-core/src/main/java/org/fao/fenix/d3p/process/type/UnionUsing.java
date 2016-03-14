@@ -1,4 +1,4 @@
-package org.fao.fenix.d3p.process.dto;
+package org.fao.fenix.d3p.process.type;
 
 public enum UnionUsing {
 
