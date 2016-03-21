@@ -64,11 +64,12 @@ public class Graph extends Flow {
                     nextNodeResult.setRid(flow[nextNode.index].getRid());
                 if (nextNodeResult.getStorage()==null)
                     nextNodeResult.setStorage(source.getStorage());
-                if (nextNodeResult.getDsd()==null)
-                    nextNodeResult.setDsd(source.getDsd());
-                nextNodeResult.getDsd().setContextSystem("D3P");
-                nextNodeResult.getDsd().setDatasources(null);
-                nextNodeResult.getDsd().setRID(null);
+                DSDDataset dsd = nextNodeResult.getCurrentDsd();
+                if (dsd==null)
+                    nextNodeResult.setDsd(dsd = source.getDsd());
+                dsd.setContextSystem("D3P");
+                dsd.setDatasources(null);
+                dsd.setRID(null);
                 //Propagation into the graph
                 traverse(nodesById, processes, flow, result, nextNodeResult);
             }

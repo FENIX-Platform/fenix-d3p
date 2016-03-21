@@ -40,6 +40,9 @@ public abstract class Step<T> {
         //Prevent dsd overwrite in one to many relationship
         return oneToMany ? dsd.clone() : dsd;
     }
+    public DSDDataset getCurrentDsd() {
+        return dsd;
+    }
 
     public void setDsd(DSDDataset dsd) {
         this.dsd = dsd;
@@ -93,7 +96,7 @@ public abstract class Step<T> {
         metadata.setUid(rid.getUid());
         metadata.setVersion(rid.getVersion());
         metadata.setMeContent(content);
-        metadata.setDsd(getDsd());
+        metadata.setDsd(getCurrentDsd());
 
         return metadata;
     }

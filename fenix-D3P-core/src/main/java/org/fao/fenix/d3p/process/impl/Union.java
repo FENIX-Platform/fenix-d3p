@@ -9,6 +9,7 @@ import org.fao.fenix.d3p.process.impl.union.LogicFactory;
 import org.fao.fenix.d3p.process.type.ProcessName;
 
 import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
 import java.util.*;
 
 @ProcessName("union")
@@ -21,10 +22,10 @@ public class Union extends org.fao.fenix.d3p.process.Process<UnionParams> {
     public Step process(UnionParams params, Step... sourceStep) throws Exception {
         //Check parameters and restireve logic
         if (sourceStep==null || sourceStep.length==0)
-            throw new UnsupportedOperationException("filter union have no input");
+            throw new BadRequestException("filter union have no input");
         Logic unionLogic = logicFactory.getInstance(params!=null ? params.getLogic() : null);
         if (unionLogic==null)
-            throw new UnsupportedOperationException("filter union have no logic with name '"+(params!=null ? params.getLogic() : null)+'\'');
+            throw new BadRequestException("filter union have no logic with name '"+(params!=null ? params.getLogic() : null)+'\'');
 
         //Create union query steps grouped by storage
         QueryStep[] unionByStorage = unionLogic.getUnionQuerySteps(getStepByStorage(sourceStep, params.getJoin()), params.isLabel());
@@ -50,12 +51,15 @@ public class Union extends org.fao.fenix.d3p.process.Process<UnionParams> {
 
     //Utils
     private Collection<Collection<Object[]>> getStepByStorage(Step[] sources, UnionJoin[] join) {
+        if (join==null || join.length==0)
+            join = new UnionJoin[sources.length];
+
         Map<String, Collection<Object[]>> sourcesByStorage = new HashMap<>();
         for (int i=0; i<sources.length; i++) {
             Collection<Object[]> storageSources = sourcesByStorage.get(sources[i].getStorage().getClass().getName());
             if (storageSources==null)
                 sourcesByStorage.put(sources[i].getStorage().getClass().getName(), storageSources = new LinkedList<>());
-            storageSources.add(new Object[]{sources[i], join[i]});
+            storageSources.add(new Object[]{sources[i],  join[i]});
         }
         return sourcesByStorage.values();
     }

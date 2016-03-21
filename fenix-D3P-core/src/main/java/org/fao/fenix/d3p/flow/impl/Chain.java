@@ -30,7 +30,7 @@ public class Chain extends Flow {
     @Override
     public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
         //Verify applicability
-        if (isSingleChain(sourceSteps, resultRidList, flow))
+        if (!isSingleChain(sourceSteps, resultRidList, flow))
             throw new UnsupportedOperationException();
 
         //Retrieve source information
@@ -38,7 +38,7 @@ public class Chain extends Flow {
         Map<StepId, Object[]> flowBySid = getFlowBySid(flow, processes);
 
         //Apply flow
-        for (Object[] nextProcess = flowBySid.get(sourceSteps.keySet().iterator()); nextProcess!=null; nextProcess = flowBySid.get(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getRid())) {
+        for (Object[] nextProcess = flowBySid.get(sourceSteps.keySet().iterator().next()); nextProcess!=null; nextProcess = flowBySid.get(((org.fao.fenix.commons.process.dto.Process)nextProcess[0]).getRid())) {
             //Run next process and retrieve result
             Step currentStep = ((Process) nextProcess[1]).process(((org.fao.fenix.commons.process.dto.Process) nextProcess[0]).getParameters(), new Step[]{previousStep});
             //Result completion and dsd normalization

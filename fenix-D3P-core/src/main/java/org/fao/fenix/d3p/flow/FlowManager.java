@@ -57,12 +57,15 @@ public class FlowManager {
         loadProcessesInstance(flow,processes,disposableProcesses);
 
         //Apply flow
-        for (Flow flowManager : getAvailableManagers(names))
-            try {
-                return flowManager.process(sourceSteps, resultRidList, processes, flow);
-            } catch (UnsupportedOperationException ex) {
-                //Nothing to do here to try with the next flow manager
-            } finally {
+        try {
+            for (Flow flowManager : getAvailableManagers(names)) {
+                try {
+                    return flowManager.process(sourceSteps, resultRidList, processes, flow);
+                } catch (UnsupportedOperationException ex) {
+                    //Nothing to do here to try with the next flow manager
+                }
+            }
+        } finally {
                 //Close disposable processes (LIFO)
                 Collections.reverse(disposableProcesses);
                 boolean error = false;
@@ -92,7 +95,7 @@ public class FlowManager {
             if (flow[i].getSid()==null || flow[i].getSid().length==0)
                 flow[i].setSid(new StepId[]{flow[i-1].getRid()});
         //Assign processes index (useful as a unique ID)
-        for (int i=1; i<flow.length; i++)
+        for (int i=0; i<flow.length; i++)
             flow[i].index = i;
     }
 
@@ -114,7 +117,7 @@ public class FlowManager {
         Map<StepId,Collection<org.fao.fenix.commons.process.dto.Process>> processesInfoBySid = new HashMap<>();
         for (org.fao.fenix.commons.process.dto.Process processInfo : flow)
             for (StepId sid : processInfo.getSid()) {
-                if (processesInfoBySid.containsKey(sid))
+                if (!processesInfoBySid.containsKey(sid))
                     processesInfoBySid.put(sid, new LinkedList<org.fao.fenix.commons.process.dto.Process>());
                 processesInfoBySid.get(sid).add(processInfo);
             }
@@ -122,37 +125,34 @@ public class FlowManager {
         Set<StepId> sourceSidSet = new HashSet<>(processesInfoBySid.keySet());
         sourceSidSet.removeAll(ridSet);
 
-        Stack<org.fao.fenix.commons.process.dto.Process> chain = new Stack<>();
         for (StepId sourceSid : sourceSidSet)
             for (org.fao.fenix.commons.process.dto.Process processInfo : processesInfoBySid.get(sourceSid)) {
-                chain.push(processInfo);
-                org.fao.fenix.commons.process.dto.Process cycleProcess = getCycleProcess(processesInfoBySid,chain);
+                org.fao.fenix.commons.process.dto.Process cycleProcess = getCycleProcess(processInfo, processesInfoBySid, new Stack<org.fao.fenix.commons.process.dto.Process>());
                 if (cycleProcess!=null)
-                    throw new BadRequestException("Processes RID must be unique into the flow. The duplication is on the process "+cycleProcess+" starting from process "+processInfo);
+                    throw new BadRequestException("Processes cycle into the flow. The cycle close with the process "+cycleProcess+" starting from process "+processInfo);
             }
 
     }
     private org.fao.fenix.commons.process.dto.Process getCycleProcess(
+            org.fao.fenix.commons.process.dto.Process processInfo,
             Map<StepId,Collection<org.fao.fenix.commons.process.dto.Process>> processesInfoBySid,
             Stack<org.fao.fenix.commons.process.dto.Process> chain) throws Exception {
 
-        org.fao.fenix.commons.process.dto.Process processInfo = chain.peek();
-        org.fao.fenix.commons.process.dto.Process cycleProcess = null;
-
         if (chain.contains(processInfo))
-            cycleProcess = processInfo;
+            return processInfo;
         else {
+            chain.push(processInfo);
+            org.fao.fenix.commons.process.dto.Process cycleProcess;
             Collection<org.fao.fenix.commons.process.dto.Process> nextProcesses = processesInfoBySid.get(processInfo.getRid());
             if (nextProcesses!=null)
                 for (org.fao.fenix.commons.process.dto.Process nextProcess : nextProcesses) {
-                    chain.push(nextProcess);
-                    if ((cycleProcess = getCycleProcess(processesInfoBySid, chain))!=null)
-                        break;
+                    if ((cycleProcess = getCycleProcess(nextProcess, processesInfoBySid, chain))!=null)
+                        return cycleProcess;
                 }
         }
 
         chain.pop();
-        return cycleProcess;
+        return null;
     }
 
     //Fetch utils

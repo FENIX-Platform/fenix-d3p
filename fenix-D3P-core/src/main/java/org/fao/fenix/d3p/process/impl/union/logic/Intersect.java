@@ -65,7 +65,7 @@ public class Intersect extends Base {
 
     private Integer[] getTransposeMatrix(ArrayList<DSDColumn> destinationColumns, Step source, UnionJoin joinType, Map<String, Integer> subjectsIndex, Map<String, Integer> idsIndex) {
         Collection<Integer> matrix = new LinkedList<>();
-        List<String> joinColumns = joinType.getColumns()!=null && joinType.getColumns().length>0 ? Arrays.asList(joinType.getColumns()) : null;
+        List<String> joinColumns = joinType!=null && joinType.getColumns()!=null && joinType.getColumns().length>0 ? Arrays.asList(joinType.getColumns()) : null;
 
         if (destinationColumns.size()==0) {
             int i=0;
@@ -84,7 +84,7 @@ public class Intersect extends Base {
                 Integer index = null;
                 if (joinColumns==null || joinColumns.contains(column.getId())) {
                     //Find match index
-                    index = getMatchIndex(column, source, matrix, destinationColumns.size(), joinType.getUsing(), subjectsIndex, idsIndex);
+                    index = getMatchIndex(column, source, matrix, destinationColumns.size(), joinType!=null ? joinType.getUsing() : UnionJoin.DEFAULT_JOIN_TYPE, subjectsIndex, idsIndex);
                     //check and extend existing column domain
                     if (index!=null)
                         extendDomain(source, column, destinationColumns.get(index));

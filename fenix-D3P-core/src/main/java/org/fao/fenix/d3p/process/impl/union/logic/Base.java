@@ -40,11 +40,11 @@ public abstract class Base implements Logic {
                 if (storage==null)
                     storage = source.getStorage();
 
-                Object[] sourceParameters = source.getType()== StepType.table ? ((QueryStep)source).getParams() : null;
+                Object[] sourceParameters = source.getType()== StepType.query ? ((QueryStep)source).getParams() : null;
                 if (sourceParameters!=null && sourceParameters.length>0)
                     parameters.addAll(Arrays.asList(sourceParameters));
 
-                query.append(createSelect(source, transposeMatrixGroupIterator.next(), destinationColumns.size()));
+                query.append(createSelect(source, transposeMatrixGroupIterator.next(), destinationColumns.size())).append(" UNION ALL ");
             }
 
             DSDDataset dsd = new DSDDataset();
@@ -54,7 +54,7 @@ public abstract class Base implements Logic {
             QueryStep result = (QueryStep)stepFactory.getInstance(StepType.query);
             result.setStorage(storage);
             result.setDsd(dsd);
-            result.setData(query.toString());
+            result.setData(query.substring(0, query.length()-" UNION ALL ".length()));
             result.setParams(parameters.toArray());
             result.setTypes(null); //TODO support types
             resultList.add(result);
@@ -80,7 +80,7 @@ public abstract class Base implements Logic {
             if (invertedMatrix[i]==null)
                 query.append("NULL AS column_").append(i).append(',');
             else
-                query.append(sourceColumnsArray[invertedMatrix[i]]).append(',');
+                query.append(sourceColumnsArray[invertedMatrix[i]].getId()).append(',');
         query.deleteCharAt(query.length()-1);
         query.append(" FROM ").append(tableName);
 
