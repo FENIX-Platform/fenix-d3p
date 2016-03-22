@@ -28,7 +28,7 @@ public class Union extends org.fao.fenix.d3p.process.Process<UnionParams> {
             throw new BadRequestException("filter union have no logic with name '"+(params!=null ? params.getLogic() : null)+'\'');
 
         //Create union query steps grouped by storage
-        QueryStep[] unionByStorage = unionLogic.getUnionQuerySteps(getStepByStorage(sourceStep, params.getJoin()), params.isLabel());
+        QueryStep[] unionByStorage = unionLogic.getUnionQuerySteps(getStepByStorage(sourceStep, params.getJoin()));
 
         //Create a single result step
         if (unionByStorage.length>1) { //In case of multiple storage run query steps to retrieve iterators and create a unique IteratorStep

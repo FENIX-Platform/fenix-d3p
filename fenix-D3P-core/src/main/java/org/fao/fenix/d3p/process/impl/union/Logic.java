@@ -7,6 +7,6 @@ import java.util.Map;
 
 public interface Logic {
 
-    QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage, boolean labels) throws Exception;
+    QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage) throws Exception;
 
 }

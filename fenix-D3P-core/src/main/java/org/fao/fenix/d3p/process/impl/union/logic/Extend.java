@@ -14,7 +14,7 @@ import java.util.*;
 public class Extend extends Base {
 
     @Override
-    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage, boolean labels) throws Exception {
+    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage) throws Exception {
         //Create destination table structure and conversion matrix
         ArrayList<DSDColumn> destinationColumns = new ArrayList<>();
         Collection<Collection<Integer[]>> transposeMatrixGroups = new LinkedList<>();
@@ -35,7 +35,7 @@ public class Extend extends Base {
 
     private Integer[] getTransposeMatrix(ArrayList<DSDColumn> destinationColumns, Step source, UnionJoin joinType, Map<String, Integer> subjectsIndex, Map<String, Integer> idsIndex) {
         Collection<Integer> matrix = new LinkedList<>();
-        List<String> joinColumns = joinType.getColumns()!=null && joinType.getColumns().length>0 ? Arrays.asList(joinType.getColumns()) : null;
+        List<String> joinColumns = joinType!=null && joinType.getColumns()!=null && joinType.getColumns().length>0 ? Arrays.asList(joinType.getColumns()) : null;
 
         for (DSDColumn column : source.getDsd().getColumns()) {
             Integer index = null;
@@ -43,7 +43,7 @@ public class Extend extends Base {
                 column.setKey(false);
 
                 //Find match index
-                index = getMatchIndex(column, source, matrix, destinationColumns.size(), joinType.getUsing(), subjectsIndex, idsIndex);
+                index = getMatchIndex(column, source, matrix, destinationColumns.size(), joinType!=null ? joinType.getUsing() : UnionJoin.DEFAULT_JOIN_TYPE, subjectsIndex, idsIndex);
                 //add as a new column or check and extend existing column domain
                 if (index==null)
                     index = destinationColumns.size();

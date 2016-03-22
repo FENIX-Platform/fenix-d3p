@@ -72,7 +72,8 @@ public abstract class Base implements Logic {
         //Prepare conversion matrix
         Integer[] invertedMatrix = new Integer[destinationSize];
         for (int i=0; i<transposeMatrix.length; i++)
-            invertedMatrix[transposeMatrix[i]] = i;
+            if (transposeMatrix[i]!=null)
+                invertedMatrix[transposeMatrix[i]] = i;
         DSDColumn[] sourceColumnsArray = source.getDsd().getColumns().toArray(new DSDColumn[source.getDsd().getColumns().size()]);
         //Return query
         StringBuilder query = new StringBuilder("SELECT ");

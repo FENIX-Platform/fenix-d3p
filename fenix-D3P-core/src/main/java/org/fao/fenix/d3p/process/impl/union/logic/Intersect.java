@@ -14,7 +14,7 @@ import java.util.*;
 public class Intersect extends Base {
 
     @Override
-    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage, boolean labels) throws Exception {
+    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage) throws Exception {
         //Create destination table structure and conversion matrix
         ArrayList<DSDColumn> destinationColumns = new ArrayList<>();
         Collection<Collection<Integer[]>> transposeMatrixGroups = new LinkedList<>();

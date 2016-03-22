@@ -23,29 +23,20 @@ public class Manual extends Base {
 
 
     @Override
-    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage, boolean labels) throws Exception {
-
-        //Add label columns into parameters if specified
-        if (labels) {
-            Language[] languages = DatabaseStandards.getLanguageInfo();
-            if (languages!=null && languages.length>0)
-                for (Collection<Object[]> sources : sourcesByStorage)
-                    for (Object[] sourceInfo : sources) {
-                        UnionJoin joinInfo = (UnionJoin) sourceInfo[1];
-                        String[] columnsFilter = joinInfo!=null ? joinInfo.getColumns() : null;
-                        if (columnsFilter != null && columnsFilter.length > 0) {
-                            Set<String> columnsFilterSet = new LinkedHashSet<>(Arrays.asList(columnsFilter));
-                            for (DSDColumn column : ((Step) sourceInfo[0]).getDsd().getColumns())
-                                if (column.getDataType() == DataType.code || column.getDataType() == DataType.customCode)
-                                    for (Language language : languages)
-                                        columnsFilterSet.add(column.getId() + '_' + language.getCode());
-                            joinInfo.setColumns(columnsFilterSet.toArray(new String[columnsFilterSet.size()]));
-                        }
-                    }
-        }
-
+    public QueryStep[] getUnionQuerySteps(Collection<Collection<Object[]>> sourcesByStorage) throws Exception {
         //Create destination DSD
-        ArrayList<DSDColumn> destinationColumns = new ArrayList<>(((Step)sourcesByStorage.iterator().next().iterator().next()[0]).getDsd().getColumns());
+        Object[] firstSourceInfo = sourcesByStorage.iterator().next().iterator().next();
+        DSDDataset firstDatasetDsd = ((Step)firstSourceInfo[0]).getDsd();
+        UnionJoin firstSourceJoinInfo = (UnionJoin)firstSourceInfo[1];
+        String[] selectedColumns = firstSourceJoinInfo!=null ? firstSourceJoinInfo.getColumns() : null;
+
+        DSDColumn[] destinationColumns = null;
+        if (selectedColumns!=null && selectedColumns.length>0) {
+            destinationColumns = new DSDColumn[selectedColumns.length];
+            for (int i=0; i<selectedColumns.length; i++)
+                destinationColumns[i] = selectedColumns[i]!=null ? firstDatasetDsd.findColumn(selectedColumns[i]) : null;
+        } else
+            destinationColumns = firstDatasetDsd.getColumns().toArray(new DSDColumn[firstDatasetDsd.getColumns().size()]);
 
         //Create transpose matrix and extend columns domain
         Collection<Collection<Integer[]>> transposeMatrixGroups = new LinkedList<>();
@@ -57,28 +48,35 @@ public class Manual extends Base {
                 UnionJoin joinInfo = (UnionJoin) sourceInfo[1];
                 String[] columnsFilter = joinInfo!=null ? joinInfo.getColumns() : null;
 
-                Integer[] matrix = new Integer[destinationColumns.size()];
+                Integer[] matrix = new Integer[destinationColumns.length];
                 if(columnsFilter!=null && columnsFilter.length>0) {
-                    if (columnsFilter.length!=destinationColumns.size())
+                    if (columnsFilter.length!=destinationColumns.length)
                         throw new BadRequestException("Declared destination columns into union filter have different lengths. Source: "+source.getRid().getId());
+                    ArrayList<String> columnsFilterList = new ArrayList<>(Arrays.asList(columnsFilter));
                     Set<String> columnsFilterSet = new HashSet<>(Arrays.asList(columnsFilter));
-                    int i=0, index=0;
+                    //Create matrix from columns filter to DSD
+                    int dsdIndex=0;
                     for (DSDColumn column : dsd.getColumns()) {
-                        if (columnsFilterSet.contains(column.getId())) {
-                            extendDomain(source, column, destinationColumns.get(index));
-                            matrix[index++] = i;
+                        int filterIndex = columnsFilterList.indexOf(column.getId());
+                        if (filterIndex>=0) {
+                            if (destinationColumns[filterIndex]!=null)
+                                extendDomain(source, column, destinationColumns[filterIndex]);
+                            else
+                                destinationColumns[filterIndex] = column;
+                            matrix[dsdIndex] = filterIndex;
                         }
-                        i++;
+                        dsdIndex++;
                     }
-                    if (index<destinationColumns.size())
-                        throw new BadRequestException("Wrong columns name for union filter. Source: "+source.getRid().getId());
                 } else {
                     Collection<DSDColumn> columns = dsd.getColumns();
-                    if (columns.size()<destinationColumns.size())
+                    if (columns.size()<destinationColumns.length)
                         throw new BadRequestException("Declared destination columns into union filter have different lengths. Source: "+source.getRid().getId());
                     Iterator<DSDColumn> columnsIterator = columns.iterator();
-                    for (DSDColumn destinationColumn : destinationColumns)
-                        extendDomain(source, columnsIterator.next(), destinationColumn);
+                    for (int i=0; i<destinationColumns.length; i++)
+                        if (destinationColumns[i]!=null)
+                            extendDomain(source, columnsIterator.next(), destinationColumns[i]);
+                        else
+                            destinationColumns[i] = columnsIterator.next();
 
                     for (int i=0; i<matrix.length; i++)
                         matrix[i] = i;
@@ -89,7 +87,35 @@ public class Manual extends Base {
         }
 
         //Create resulting query steps
-        return createQuerySteps(sourcesByStorage, destinationColumns, transposeMatrixGroups);
+        return createQuerySteps(sourcesByStorage, new ArrayList<>(Arrays.asList(destinationColumns)), transposeMatrixGroups);
     }
+
+
+    /*
+            //Add label columns into parameters if specified
+        if (labels) {
+            Language[] languages = DatabaseStandards.getLanguageInfo();
+            if (languages!=null && languages.length>0) {
+                //Retrieve label columns
+                Set<String> labelColumns = new HashSet<>();
+                for (Collection<Object[]> sources : sourcesByStorage)
+                    for (Object[] sourceInfo : sources) {
+                        UnionJoin joinInfo = (UnionJoin) sourceInfo[1];
+                        String[] columnsFilter = joinInfo != null ? joinInfo.getColumns() : null;
+                        if (columnsFilter != null && columnsFilter.length > 0) {
+                            Set<String> columnsFilterSet = new LinkedHashSet<>(Arrays.asList(columnsFilter));
+                            for (DSDColumn column : ((Step) sourceInfo[0]).getDsd().getColumns())
+                                if (columnsFilterSet.contains(column.getId()) && (column.getDataType() == DataType.code || column.getDataType() == DataType.customCode))
+                                    for (Language language : languages)
+                                        labelColumns.add(column.getId() + '_' + language.getCode());
+                        }
+                    }
+                if (labelColumns.size()>0) {
+
+                }
+            }
+        }
+
+     */
 
 }

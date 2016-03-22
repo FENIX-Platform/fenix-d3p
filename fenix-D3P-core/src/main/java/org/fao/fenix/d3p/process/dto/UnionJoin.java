@@ -6,7 +6,7 @@ public class UnionJoin {
 
     public static final UnionUsing DEFAULT_JOIN_TYPE = UnionUsing.subjectFirst;
 
-    private UnionUsing using = UnionUsing.subjectOnly;
+    private UnionUsing using;
     private String[] columns;
 
     public UnionUsing getUsing() {
