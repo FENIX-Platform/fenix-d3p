@@ -44,8 +44,6 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
                         if (!columnsName.contains(id))
                             columnsName.add(id);
                     }
-        //Normalize table name
-        tableName = type==StepType.table ? tableName : '('+tableName+") as " + source.getRid();
         //Create query
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
