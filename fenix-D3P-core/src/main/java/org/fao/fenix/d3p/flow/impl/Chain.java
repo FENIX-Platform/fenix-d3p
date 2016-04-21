@@ -29,7 +29,7 @@ public class Chain extends Flow {
 
     @Override
     public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
-        //Verify applicability
+        //Verify applicability TODO handle error
         if (!isSingleChain(sourceSteps, resultRidList, flow))
             throw new UnsupportedOperationException();
 
