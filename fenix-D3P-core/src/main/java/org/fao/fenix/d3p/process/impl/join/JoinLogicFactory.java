@@ -11,7 +11,7 @@ public class JoinLogicFactory {
     public JoinLogic getInstance (JoinParams params) {
 
         if(this.instance == null){
-            this.instance = (params!=null)?new ManualJoin():new AutomaticJoin();
+            this.instance = (params!=null)?new ManualJoin( params ) : new AutomaticJoin();
         }
         return this.instance;
     }

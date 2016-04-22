@@ -6,7 +6,7 @@ import org.fao.fenix.d3p.dto.Step;
 public interface JoinLogic {
 
 
-    public Step[] process();
+    public Step[] process(Step... sourceStep);
 
 
 
