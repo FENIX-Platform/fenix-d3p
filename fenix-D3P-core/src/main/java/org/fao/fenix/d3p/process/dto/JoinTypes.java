@@ -5,6 +5,7 @@ public enum JoinTypes {
 
     id,
     code,
+    text,
     number,
     bool,
     time,

@@ -1,6 +1,8 @@
 package org.fao.fenix.d3p.process.impl.join.logic;
 
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
+import org.fao.fenix.commons.msd.dto.full.OjCodeList;
+import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.process.dto.JoinParameter;
 import org.fao.fenix.d3p.process.dto.JoinParams;
@@ -10,14 +12,16 @@ import org.fao.fenix.d3p.process.impl.Page;
 import org.fao.fenix.d3p.process.impl.join.JoinLogic;
 
 import javax.ws.rs.BadRequestException;
+import javax.xml.crypto.Data;
 import java.util.*;
 
 public class ManualJoin implements JoinLogic {
 
     private JoinParams params;
 
-    private Map<String,Set<String>> keyColumns;
+    private Map<String, Set<String>> keyColumns;
     private Map<String, Set<String>> otherColumns;
+    private Map<Integer,Collection<String>> uidBlacklist;
 
     public ManualJoin(JoinParams params) {
         this.params = params;
@@ -65,6 +69,67 @@ public class ManualJoin implements JoinLogic {
 
     }
 
+
+
+
+
+    private boolean checkCompatibilityKeyColumns(int indexParams, JoinParameter sourceParameter, DSDColumn sourceColumn, Step... steps) {
+
+        boolean compatible = true;
+        for (int j = 0; j < steps.length && compatible; j++) {
+            JoinParameter param = ((ArrayList<JoinParameter>) ((ArrayList<Collection<JoinParameter>>) this.params.getJoins()).get(j)).get(indexParams);
+            if (param.getType() == JoinTypes.id) {
+                DSDColumn columnToCheck = ((ArrayList<DSDColumn>) steps[j].getDsd().getColumns()).get(indexParams);
+                compatible = (sourceColumn!= null)? areColumnsJoinable(sourceColumn,columnToCheck):isColumnJoinableWithType(columnToCheck,sourceParameter);
+
+            } else {
+                compatible= (sourceColumn!= null)? isColumnJoinableWithType(sourceColumn,param): areParametersJoinable(sourceParameter,param);
+
+            }
+        }
+        return compatible;
+    }
+
+    private boolean isColumnJoinableWithType (DSDColumn source, JoinParameter destination) {
+
+        if((destination.getType() == JoinTypes.code || destination.getType() == JoinTypes.text ) &&
+                destination.getValue() instanceof String ) {
+            DataType dataType = source.getDataType();
+
+            return dataType!= DataType.bool && dataType!= DataType.number && dataType!= DataType.date && dataType!= DataType.month &&
+                    dataType!= DataType.year && dataType!= DataType.time && dataType!= DataType.number;
+        }
+        // boolean
+        else if(destination.getType() == JoinTypes.bool ) {
+            return source.getDataType() == DataType.bool;
+        }
+        // number
+
+            return true;
+
+    }
+
+    private boolean areParametersJoinable (JoinParameter source, JoinParameter destination) {
+
+        return source.getType() == destination.getType();
+    }
+
+    private boolean areColumnsJoinable(DSDColumn source, DSDColumn destination) {
+        boolean result = false;
+        DataType sourceDatatype = source.getDataType();
+        result = sourceDatatype == destination.getDataType();
+        if (result) {
+            if (sourceDatatype == DataType.code) {
+                result = (((List<OjCodeList>) source.getDomain().getCodes()).get(0).getIdCodeList()) == (((List<OjCodeList>) destination.getDomain().getCodes()).get(0).getIdCodeList());
+                if (((List<OjCodeList>) source.getDomain().getCodes()).get(0).getVersion() != null)
+                    result = (((List<OjCodeList>) source.getDomain().getCodes()).get(0).getVersion()) == (((List<OjCodeList>) destination.getDomain().getCodes()).get(0).getIdCodeList());
+
+            }
+        }
+        return result;
+    }
+
+
     private void fillKeyColumns(List<DSDColumn> columns, Map<Integer, Set<Integer>> positionKeyColumns, Step... sources) {
 
         ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
@@ -76,13 +141,15 @@ public class ManualJoin implements JoinLogic {
                 if (parameterList.get(i).getType() == JoinTypes.id) {
                     if (idFound == false) {
                         DSDColumn column = find(parameterList.get(i).getValue().toString(), sources[j].getDsd());
-                        if (column != null) {
+                        if (checkCompatibilityKeyColumns(i, null, column, sources)) {
+                            if (column != null) {
+                                setPositionKey(positionKeyColumns, j, i);
+                                columns.add(column);
+                                idFound = true;
+                            }
+                        } else {
                             setPositionKey(positionKeyColumns, j, i);
-                            columns.add(column);
-                            idFound = true;
                         }
-                    } else {
-                        setPositionKey(positionKeyColumns, j, i);
                     }
                 }
             }
@@ -117,8 +184,8 @@ public class ManualJoin implements JoinLogic {
             for (int j = 0, datasetSize = dataset.getColumns().size(); j < datasetSize; j++) {
                 // if it is not duplicated, add
                 if (!isADuplicateColumn(i, j, positionKeyColumns) ||
-                        (valuesToBeShown != null && valuesToBeShown.get(i).contains(((ArrayList<DSDColumn>) dataset.getColumns()).get(j).getId())) ) {
-                        columns.add(((ArrayList<DSDColumn>) dataset.getColumns()).get(j));
+                        (valuesToBeShown != null && valuesToBeShown.get(i).contains(((ArrayList<DSDColumn>) dataset.getColumns()).get(j).getId()))) {
+                    columns.add(((ArrayList<DSDColumn>) dataset.getColumns()).get(j));
                 }
             }
         }
@@ -126,6 +193,9 @@ public class ManualJoin implements JoinLogic {
 
     private boolean isADuplicateColumn(int row, int column, Map<Integer, Set<Integer>> positionKeyColumns) {
         return positionKeyColumns.get(row) != null && positionKeyColumns.get(row).contains(column);
+       /*if(positionKeyColumns.get(row) != null && positionKeyColumns.get(row).contains(column)){
+           this.uidBlacklist = (this.uidBlacklist== null)? new HashMap<Integer, Collection<String>>(): this.uidBlacklist.containsKey(row)
+       };*/
     }
 
 
@@ -155,13 +225,14 @@ public class ManualJoin implements JoinLogic {
     }
 
 
-    private void fillSupportMap (DSDColumn column, String datasetUID, Map<String,Set<String>> map) {
+    private void fillSupportMap(DSDColumn column, String datasetUID, Map<String, Set<String>> map) {
 
-        Set<String> values = (map.containsKey(datasetUID) &&  map.get(datasetUID)!= null && map.get(datasetUID).size()>0)?
-                        new HashSet<String>(map.get(datasetUID)):
-                        new HashSet<String>();
+
+        Set<String> values = (map.containsKey(datasetUID) && map.get(datasetUID) != null && map.get(datasetUID).size() > 0) ?
+                new HashSet<String>(map.get(datasetUID)) :
+                new HashSet<String>();
         values.add(column.getId());
-        map.put(datasetUID,values);
+        map.put(datasetUID, values);
 
     }
 
