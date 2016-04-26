@@ -16,6 +16,9 @@ public class ManualJoin implements JoinLogic {
 
     private JoinParams params;
 
+    private Map<String,Set<String>> keyColumns;
+    private Map<String, Set<String>> otherColumns;
+
     public ManualJoin(JoinParams params) {
         this.params = params;
     }
@@ -25,6 +28,8 @@ public class ManualJoin implements JoinLogic {
     public Step[] process(Step... sourceStep) {
 
         // check that parameters follows the sid
+        this.keyColumns = new HashMap<String, Set<String>>();
+        this.otherColumns = new HashMap<String, Set<String>>();
 
         validate(sourceStep);
         createDSDColumns(sourceStep);
@@ -63,7 +68,7 @@ public class ManualJoin implements JoinLogic {
     private void fillKeyColumns(List<DSDColumn> columns, Map<Integer, Set<Integer>> positionKeyColumns, Step... sources) {
 
         ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
-        for (int i = 0, keyColumns = ((ArrayList<JoinParameter>) parameters.get(0)).size(); i < keyColumns; i++) {
+        for (int i = 0, keySize = ((ArrayList<JoinParameter>) parameters.get(0)).size(); i < keySize; i++) {
             boolean idFound = false;
             // search id for each dataset
             for (int j = 0, sidLength = parameters.size(); j < sidLength; j++) {
@@ -84,7 +89,7 @@ public class ManualJoin implements JoinLogic {
         }
 
         if (columns.size() <= 0)
-            throw new BadRequestException("wrong configuration for join parameters:id parameters does not exists");
+            throw new BadRequestException("wrong configuration for join parameters:id parameters do not exist");
     }
 
     private void setPositionKey(Map<Integer, Set<Integer>> positions, int key, int value) {
@@ -147,6 +152,17 @@ public class ManualJoin implements JoinLogic {
             result.put(i, ids);
         }
         return result;
+    }
+
+
+    private void fillSupportMap (DSDColumn column, String datasetUID, Map<String,Set<String>> map) {
+
+        Set<String> values = (map.containsKey(datasetUID) &&  map.get(datasetUID)!= null && map.get(datasetUID).size()>0)?
+                        new HashSet<String>(map.get(datasetUID)):
+                        new HashSet<String>();
+        values.add(column.getId());
+        map.put(datasetUID,values);
+
     }
 
 }
