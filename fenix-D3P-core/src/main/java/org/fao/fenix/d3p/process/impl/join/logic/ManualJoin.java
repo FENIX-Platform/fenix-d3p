@@ -277,7 +277,10 @@ public class ManualJoin implements JoinLogic {
         Set<String> values = (this.otherColumns.containsKey(uid)) ? this.otherColumns.get(uid) : new HashSet<String>();
 
         DSDColumn column = (columnID!= null)? sourceDataset.findColumn(columnID) : ((ArrayList<DSDColumn>)sourceDataset.getColumns()).get(columnPosition);
-        values.add(column.getId());
+        if(column!= null)
+            values.add(column.getId());
+        else
+            throw new BadRequestException("wrong configuration for values parameters: the "+columnID+ " id for the dataset "+sourceDataset.getRID()+ " does not exist");
         this.otherColumns.put(uid,values );
 
         if((Integer)columnPosition != null) {
