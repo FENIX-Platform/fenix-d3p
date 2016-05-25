@@ -1,6 +1,7 @@
 package org.fao.fenix.d3p.process.impl.join.logic;
 
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
+import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.d3p.dto.Step;
@@ -23,6 +24,8 @@ public class ManualJoin implements JoinLogic {
     private Map<String, Set<String>> keyColumns;
     private Map<String, Set<String>> otherColumns;
     private Map<String, Collection<String>> uidBlacklist;
+    private Map<Integer, Set<Integer>> keyColumnsPosition;
+    private HashMap<Integer, Set<Integer>> otherColumnsPosition;
 
     public ManualJoin(JoinParams params) {
         this.params = params;
@@ -34,7 +37,10 @@ public class ManualJoin implements JoinLogic {
 
         // check that parameters follows the sid
         this.keyColumns = new HashMap<String, Set<String>>();
+        this.keyColumnsPosition = new HashMap<Integer, Set<Integer>>();
         this.otherColumns = new HashMap<String, Set<String>>();
+        this.otherColumnsPosition = new HashMap<Integer, Set<Integer>>();
+
         this.uidBlacklist = new HashMap<String, Collection<String>>();
         this.steps = sourceStep;
 
@@ -43,10 +49,14 @@ public class ManualJoin implements JoinLogic {
 
         StringBuilder query;
 
-
         return new Step[0];
     }
 
+    /**
+     * Check if the number of parameters is the same for each resource
+     *
+     * @param steps
+     */
     private void validate(Step... steps) {
         if (this.params.getJoins().size() == steps.length) {
             Iterator<Collection<JoinParameter>> it = this.params.getJoins().iterator();
@@ -61,15 +71,46 @@ public class ManualJoin implements JoinLogic {
         }
     }
 
+
     private List<DSDColumn> createDSDColumns(Step... sourceStep) {
 
         // create key Columns
-        Map<Integer, Set<Integer>> positionKeyColumnsForDataset = new HashMap<Integer, Set<Integer>>();
         List<DSDColumn> resultColumns = new ArrayList<DSDColumn>();
         fillKeyColumns();
-        fillOtherColumns(resultColumns, positionKeyColumnsForDataset, sourceStep);
+        fillOtherColumns(sourceStep);
         return null;
+    }
 
+
+    private void fillKeyColumns() {
+
+        Map<Integer, ArrayList<DSDColumn>> mapKeyColumns = new HashMap<Integer, ArrayList<DSDColumn>>();
+        ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
+        // for each parameter
+        for (int i = 0, keySize = ((ArrayList<JoinParameter>) parameters.get(0)).size(); i < keySize; i++) {
+            // search id for each dataset
+            boolean columnNotFound = true;
+            Collection<JoinParameter> selectAsParameters = new ArrayList<JoinParameter>();
+            //for each dataset
+            for (int j = 0, sidLength = parameters.size(); j < sidLength && columnNotFound; j++) {
+
+                JoinParameter joinParameter = ((ArrayList<JoinParameter>) parameters.get(j)).get(i);
+                if (joinParameter.getType() == JoinTypes.id) {
+                    DSDColumn column = steps[j].getCurrentDsd().findColumn(joinParameter.getValue().toString());
+                    if (column != null) {
+
+                        columnNotFound = !checkDuplicatedAndInsertKeyColumns(i, j, column, steps);
+                    } else {
+                        throw new BadRequestException("wrong configuration for columns: id " + joinParameter.getValue().toString() + " does not exist");
+                    }
+                } else {
+                    selectAsParameters.add(joinParameter);
+                }
+            }
+        }
+
+        if (keyColumns.size() <= 0)
+            throw new BadRequestException("wrong configuration for join parameters:id parameters do not exist");
     }
 
 
@@ -92,10 +133,6 @@ public class ManualJoin implements JoinLogic {
 
     }
 
-    private boolean areParametersJoinable(JoinParameter source, JoinParameter destination) {
-
-        return source.getType() == destination.getType();
-    }
 
     private boolean areColumnsJoinable(DSDColumn source, DSDColumn destination) {
         boolean result = false;
@@ -113,31 +150,7 @@ public class ManualJoin implements JoinLogic {
     }
 
 
-    private void fillKeyColumns() {
-
-
-        ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
-        // for each parameter
-        for (int i = 0, keySize = ((ArrayList<JoinParameter>) parameters.get(0)).size(); i < keySize; i++) {
-            // search id for each dataset
-            boolean columnNotFound = true;
-            //for each dataset
-            for (int j = 0, sidLength = parameters.size(); j < sidLength && columnNotFound; j++) {
-                ArrayList<JoinParameter> parameterList = (ArrayList<JoinParameter>) parameters.get(j);
-                if (parameterList.get(i).getType() == JoinTypes.id) {
-                    DSDColumn column = find(parameterList.get(i).getValue().toString(), steps[j].getDsd());
-                    if (column != null)
-                        columnNotFound = !checkCompatibilityKeyColumns(i, j, column, steps);
-
-                }
-            }
-        }
-
-        if (keyColumns.size() <= 0)
-            throw new BadRequestException("wrong configuration for join parameters:id parameters do not exist");
-    }
-
-    private boolean checkCompatibilityKeyColumns(int sourceColumnIndex, int sourceRowIndex, DSDColumn sourceColumn, Step[] steps) {
+    private boolean checkDuplicatedAndInsertKeyColumns(int sourceColumnIndex, int sourceRowIndex, DSDColumn sourceColumn, Step[] steps) {
         ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
 
         boolean compatible = true;
@@ -145,20 +158,26 @@ public class ManualJoin implements JoinLogic {
 
             if (rowIndex != sourceRowIndex) {
                 JoinParameter param = ((ArrayList<JoinParameter>) parameters.get(rowIndex)).get(sourceColumnIndex);
-                // if it is a column and it is not blacklisted
-                if (param.getType() == JoinTypes.id ) {
-                    DSDColumn destinationColumn =  steps[rowIndex].getCurrentDsd().findColumn(param.getValue().toString());
-                     // if it is not a blacklist column
-                    if(!isABlacklistedColumn(steps[rowIndex].getRid().getId(), destinationColumn.getId())) {
+                // if it is a column
+                if (param.getType() == JoinTypes.id) {
+                    DSDColumn destinationColumn = steps[rowIndex].getCurrentDsd().findColumn(param.getValue().toString());
+                    // if it is not a blacklist column
+                    if (!isABlacklistedColumn(steps[rowIndex].getRid().getId(), destinationColumn.getId())) {
                         compatible = areColumnsJoinable(sourceColumn, destinationColumn);
-                        if (compatible)
-                            insertSupportMapColumns(steps[sourceRowIndex].getRid().getId(), steps[rowIndex].getRid().getId(), sourceColumn, destinationColumn);
+                        if (compatible) {
+                            insertKeyColumns(steps[sourceRowIndex].getRid().getId(), steps[rowIndex].getRid().getId(), sourceColumn, destinationColumn);
+                            updatePositionMatrix(rowIndex, sourceColumnIndex);
 
+                        }
                     }
                 } else {
 
-                    compatible = isColumnJoinableWithType(sourceColumn,param);
+                    compatible = isColumnJoinableWithType(sourceColumn, param);
+                    if (compatible) {
+                        insertKeyColumns(steps[sourceRowIndex].getRid().getUid(), sourceColumn);
+                        updatePositionMatrix(rowIndex, sourceColumnIndex);
 
+                    }
                 }
 
             }
@@ -166,13 +185,25 @@ public class ManualJoin implements JoinLogic {
         return compatible;
     }
 
-    private boolean isABlacklistedColumn(String datasetUID, String columnTitle) {
-        return uidBlacklist.containsKey(datasetUID) && uidBlacklist.get(datasetUID).contains(columnTitle);
+
+    private void updatePositionMatrix(int rowIndex, int columnIndex) {
+        Set<Integer> values = this.keyColumnsPosition.containsKey(rowIndex) ? this.keyColumnsPosition.get(rowIndex) : new HashSet<Integer>();
+        values.add(columnIndex);
+        this.keyColumnsPosition.put(rowIndex, values);
     }
 
 
-    private void insertSupportMapColumns(String sourceUID, String destinationUID, DSDColumn sourceColumn, DSDColumn destinationColumn) {
+    private void insertKeyColumns(String resourceUID, DSDColumn keyColumn) {
 
+        Set<String> values = (keyColumns.containsKey(resourceUID)) ? keyColumns.get(resourceUID) : new HashSet<String>();
+        values.add(keyColumn.getId());
+        keyColumns.put(resourceUID, values);
+        if (keyColumn.getDataType() == DataType.code)
+            blacklistLabelColumns(keyColumn, resourceUID);
+    }
+
+
+    private void insertKeyColumns(String sourceUID, String destinationUID, DSDColumn sourceColumn, DSDColumn destinationColumn) {
 
         Set<String> values = (keyColumns.containsKey(sourceUID)) ? keyColumns.get(sourceUID) : new HashSet<String>();
         values.add(sourceColumn.getId());
@@ -180,9 +211,13 @@ public class ManualJoin implements JoinLogic {
         if (destinationColumn.getDataType() == DataType.code)
             blacklistLabelColumns(destinationColumn, destinationUID);
         blacklistLabelColumns(destinationColumn, destinationUID);
-
-
     }
+
+
+    private boolean isABlacklistedColumn(String datasetUID, String columnID) {
+        return uidBlacklist.containsKey(datasetUID) && uidBlacklist.get(datasetUID).contains(columnID);
+    }
+
 
     private void blacklistLabelColumns(DSDColumn columnToBeRemoved, String UIDDataset) {
 
@@ -199,11 +234,13 @@ public class ManualJoin implements JoinLogic {
         }
     }
 
+
     private void fillBlacklistMap(String key, String value) {
         ArrayList<String> values = (uidBlacklist.containsKey(key)) ? (ArrayList<String>) uidBlacklist.get(key) : new ArrayList<String>();
         values.add(value);
         uidBlacklist.put(key, values);
     }
+
 
     private boolean isLabelColumn(String originalColumnID, String possibleColumnID) {
 
@@ -212,60 +249,47 @@ public class ManualJoin implements JoinLogic {
     }
 
 
+    private void fillOtherColumns( Step... sources) {
 
-    private DSDColumn find(String columnID, org.fao.fenix.commons.msd.dto.full.DSDDataset dsdDataset) {
-        for (DSDColumn column : dsdDataset.getColumns()) {
-            if (column.getId().equals(columnID))
-                return column;
-        }
-        throw new BadRequestException("wrong configuration for join parameters: id does not exists into that dataset");
-    }
+        // if are specified
+        if(areValuesParameters(sources)) {
+            ArrayList<Collection<String>> values = ( ArrayList<Collection<String>>)this.params.getValues();
+            for(int i=0, datasetNumber = values.size(); i<datasetNumber; i++){
+                for(String colum: values.get(i))
+                    addOtherColumns(sources[i].getCurrentDsd(), i, -1, colum);
 
-    private void fillOtherColumns() {
-
-        Map<Integer, Set<String>> valuesToBeShown = (areValuesParameters(steps)) ? createMapValues() : null;
-
-
-        for (int i = 0, sidSize = steps.length; i < sidSize; i++) {
-
-        }
-
-        /*Map<Integer, Set<String>> valuesToBeShown = (areValuesParameters(steps)) ? createMapValues() : null;
-        for (int i = 0, sidSize = steps.length; i < sidSize; i++) {
-            org.fao.fenix.commons.msd.dto.full.DSDDataset dataset = sources[i].getDsd();
-            for (int j = 0, datasetSize = dataset.getColumns().size(); j < datasetSize; j++) {
-                // if it is not duplicated, add
-                if (!isADuplicateColumn(i, j, positionKeyColumns) ||
-                        (valuesToBeShown != null &&
-                                valuesToBeShown.get(i).contains(((ArrayList<DSDColumn>) dataset.getColumns()).get(j).getId()))) {
-                    columns.add(((ArrayList<DSDColumn>) dataset.getColumns()).get(j));
-                }
             }
-        }*/
-    }
-
-
-    private void fillOtherColumns(List<DSDColumn> columns, Map<Integer, Set<Integer>> positionKeyColumns, Step... sources) {
-
-        Map<Integer, Set<String>> valuesToBeShown = (areValuesParameters(sources)) ? createMapValues() : null;
-        for (int i = 0, sidSize = sources.length; i < sidSize; i++) {
-            org.fao.fenix.commons.msd.dto.full.DSDDataset dataset = sources[i].getDsd();
-            for (int j = 0, datasetSize = dataset.getColumns().size(); j < datasetSize; j++) {
-                // if it is not duplicated, add
-                if (!isADuplicateColumn(i, j, positionKeyColumns) ||
-                        (valuesToBeShown != null &&
-                                valuesToBeShown.get(i).contains(((ArrayList<DSDColumn>) dataset.getColumns()).get(j).getId()))) {
-                    columns.add(((ArrayList<DSDColumn>) dataset.getColumns()).get(j));
+        }else {
+            for (int i = 0, sidSize = sources.length; i < sidSize; i++) {
+                org.fao.fenix.commons.msd.dto.full.DSDDataset dataset = sources[i].getDsd();
+                for (int j = 0, datasetSize = dataset.getColumns().size(); j < datasetSize; j++) {
+                    // if it is not duplicated, add
+                    if (!isADuplicateColumn(i, j) && !isABlacklistedColumn(dataset.getRID(),((ArrayList<DSDColumn>)dataset.getColumns()).get(j).getId())) {
+                        addOtherColumns(dataset, i, j, null);
+                    }
                 }
             }
         }
     }
 
-    private boolean isADuplicateColumn(int row, int column, Map<Integer, Set<Integer>> positionKeyColumns) {
-        return positionKeyColumns.get(row) != null && positionKeyColumns.get(row).contains(column);
-       /*if(positionKeyColumns.get(row) != null && positionKeyColumns.get(row).contains(column)){
-           this.uidBlacklist = (this.uidBlacklist== null)? new HashMap<Integer, Collection<String>>(): this.uidBlacklist.containsKey(row)
-       };*/
+    private void addOtherColumns (DSDDataset sourceDataset,  int rowPosition, int columnPosition, String columnID) {
+        String uid = sourceDataset.getRID();
+        Set<String> values = (this.otherColumns.containsKey(uid)) ? this.otherColumns.get(uid) : new HashSet<String>();
+
+        DSDColumn column = (columnID!= null)? sourceDataset.findColumn(columnID) : ((ArrayList<DSDColumn>)sourceDataset.getColumns()).get(columnPosition);
+        values.add(column.getId());
+        this.otherColumns.put(uid,values );
+
+        if((Integer)columnPosition != null) {
+            Set<Integer> positionValues = (this.otherColumnsPosition.containsKey(rowPosition)) ? this.otherColumnsPosition.get(rowPosition) : new HashSet<Integer>();
+            positionValues.add(columnPosition);
+            this.otherColumnsPosition.put(rowPosition, positionValues);
+        }
+    }
+
+
+    private boolean isADuplicateColumn(int row, int column) {
+        return this.keyColumnsPosition.get(row) != null && this.keyColumnsPosition.get(row).contains(column);
     }
 
 
@@ -273,39 +297,11 @@ public class ManualJoin implements JoinLogic {
         if (this.params.getValues() != null && this.params.getValues().size() > 0) {
             if (source.length == this.params.getValues().size()) {
                 return true;
-
             } else {
                 throw new BadRequestException("wrong configuration for values parameter : number of values should follow the number of dataset");
             }
-        } else {
-            return false;
         }
+        return false;
     }
-
-    private Map<Integer, Set<String>> createMapValues() {
-        Map<Integer, Set<String>> result = new HashMap<Integer, Set<String>>();
-        ArrayList<Collection<String>> values = (ArrayList<Collection<String>>) this.params.getValues();
-        for (int i = 0, size = values.size(); i < size; i++) {
-            Set<String> ids = new HashSet<String>();
-            for (String s : values.get(i))
-                ids.add(s);
-            result.put(i, ids);
-        }
-        return result;
-    }
-
-
-/*
-    private void fillSupportMap(DSDColumn column, String datasetUID, Map<String, Set<String>> map) {
-
-
-        Set<String> values = (map.containsKey(datasetUID) && map.get(datasetUID) != null && map.get(datasetUID).size() > 0) ?
-                new HashSet<String>(map.get(datasetUID)) :
-                new HashSet<String>();
-        values.add(column.getId());
-        map.put(datasetUID, values);
-
-    }
-*/
 
 }
