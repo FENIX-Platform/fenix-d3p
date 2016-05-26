@@ -10,6 +10,7 @@ import org.fao.fenix.commons.process.dto.Process;
 import org.fao.fenix.commons.process.dto.StepId;
 import org.fao.fenix.d3p.flow.FlowManager;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
@@ -25,6 +26,7 @@ public class Processes {
     private static final String standardTemplatesBasePackage = Metadata.class.getPackage().getName();
 
 
+    private @Inject DatabaseStandards parameters;
     private @Inject Resources resourcesService;
     private @Inject FlowManager flowManager;
 
@@ -77,8 +79,10 @@ public class Processes {
      * @return Processed data
      * @throws Exception
      */
+
     @POST
     public Map<StepId, ResourceProxy> apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+
         //Retrieve alternative managers name list
         String[] managersName = managerList!=null ? managerList.split(",") : new String[0];
         for (int i=0; i<managersName.length; i++)
@@ -93,7 +97,7 @@ public class Processes {
             for (Map.Entry<StepId, Resource<DSDDataset,Object[]>> result : results.entrySet()) {
                 Collection<Object[]> data = result.getValue().getData();
                 org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = ResponseBeanFactory.getInstance(org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class, result.getValue().getMetadata());
-                response.put(result.getKey(), new ResourceProxy( metadataProxy, data, null, null, (long) data.size()));
+                response.put(result.getKey(), new ResourceProxy( metadataProxy, data, null, null, (long) data.size(), parameters.getLimit()));
             }
 
         return response;
