@@ -8,12 +8,9 @@ import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.process.dto.JoinParameter;
 import org.fao.fenix.d3p.process.dto.JoinParams;
 import org.fao.fenix.d3p.process.dto.JoinTypes;
-import org.fao.fenix.d3p.process.impl.Join;
-import org.fao.fenix.d3p.process.impl.Page;
 import org.fao.fenix.d3p.process.impl.join.JoinLogic;
 
 import javax.ws.rs.BadRequestException;
-import javax.xml.crypto.Data;
 import java.util.*;
 
 public class ManualJoin implements JoinLogic {
@@ -33,7 +30,7 @@ public class ManualJoin implements JoinLogic {
 
 
     @Override
-    public Step[] process(Step... sourceStep) {
+    public Step process(Step... sourceStep) throws Exception {
 
         // check that parameters follows the sid
         this.keyColumns = new HashMap<String, Set<String>>();
@@ -44,12 +41,11 @@ public class ManualJoin implements JoinLogic {
         this.uidBlacklist = new HashMap<String, Collection<String>>();
         this.steps = sourceStep;
 
-        validate(sourceStep);
-        createDSDColumns(sourceStep);
+        createDSDColumns();
 
         StringBuilder query;
 
-        return new Step[0];
+        return null;
     }
 
     /**
@@ -57,7 +53,8 @@ public class ManualJoin implements JoinLogic {
      *
      * @param steps
      */
-    private void validate(Step... steps) {
+    @Override
+    public void validate(Step... steps) throws Exception {
         if (this.params.getJoins().size() == steps.length) {
             Iterator<Collection<JoinParameter>> it = this.params.getJoins().iterator();
             int sizeFirst = it.next().size();
@@ -72,19 +69,18 @@ public class ManualJoin implements JoinLogic {
     }
 
 
-    private List<DSDColumn> createDSDColumns(Step... sourceStep) {
+    private List<DSDColumn> createDSDColumns() {
 
         // create key Columns
         List<DSDColumn> resultColumns = new ArrayList<DSDColumn>();
         fillKeyColumns();
-        fillOtherColumns(sourceStep);
-        return null;
+        fillOtherColumns();
+        return resultColumns;
     }
 
 
     private void fillKeyColumns() {
 
-        Map<Integer, ArrayList<DSDColumn>> mapKeyColumns = new HashMap<Integer, ArrayList<DSDColumn>>();
         ArrayList<Collection<JoinParameter>> parameters = (ArrayList<Collection<JoinParameter>>) this.params.getJoins();
         // for each parameter
         for (int i = 0, keySize = ((ArrayList<JoinParameter>) parameters.get(0)).size(); i < keySize; i++) {
@@ -167,16 +163,13 @@ public class ManualJoin implements JoinLogic {
                         if (compatible) {
                             insertKeyColumns(steps[sourceRowIndex].getRid().getId(), steps[rowIndex].getRid().getId(), sourceColumn, destinationColumn);
                             updatePositionMatrix(rowIndex, sourceColumnIndex);
-
                         }
                     }
                 } else {
-
                     compatible = isColumnJoinableWithType(sourceColumn, param);
                     if (compatible) {
                         insertKeyColumns(steps[sourceRowIndex].getRid().getUid(), sourceColumn);
                         updatePositionMatrix(rowIndex, sourceColumnIndex);
-
                     }
                 }
 
@@ -256,12 +249,11 @@ public class ManualJoin implements JoinLogic {
             ArrayList<Collection<String>> values = ( ArrayList<Collection<String>>)this.params.getValues();
             for(int i=0, datasetNumber = values.size(); i<datasetNumber; i++){
                 for(String colum: values.get(i))
-                    addOtherColumns(sources[i].getCurrentDsd(), i, -1, colum);
-
+                    addOtherColumns(steps[i].getCurrentDsd(), i, -1, colum);
             }
         }else {
             for (int i = 0, sidSize = sources.length; i < sidSize; i++) {
-                org.fao.fenix.commons.msd.dto.full.DSDDataset dataset = sources[i].getDsd();
+                org.fao.fenix.commons.msd.dto.full.DSDDataset dataset = steps[i].getCurrentDsd();
                 for (int j = 0, datasetSize = dataset.getColumns().size(); j < datasetSize; j++) {
                     // if it is not duplicated, add
                     if (!isADuplicateColumn(i, j) && !isABlacklistedColumn(dataset.getRID(),((ArrayList<DSDColumn>)dataset.getColumns()).get(j).getId())) {
@@ -271,6 +263,7 @@ public class ManualJoin implements JoinLogic {
             }
         }
     }
+
 
     private void addOtherColumns (DSDDataset sourceDataset,  int rowPosition, int columnPosition, String columnID) {
         String uid = sourceDataset.getRID();

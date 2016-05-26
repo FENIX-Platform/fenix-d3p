@@ -1,27 +1,36 @@
 package org.fao.fenix.d3p.process.dto;
 
 
-import java.util.Collection;
 
 public class JoinParams {
 
-    private Collection<Collection<JoinParameter>> joins;
+    private String logic;
 
-    private Collection<Collection<String>> values;
+    private JoinParameter[][] joins;
 
-    public Collection<Collection<JoinParameter>> getJoins() {
+    private String[][] values;
+
+    public JoinParameter[][] getJoins() {
         return joins;
     }
 
-    public void setJoins(Collection<Collection<JoinParameter>> joins) {
+    public void setJoins(JoinParameter[][] joins) {
         this.joins = joins;
     }
 
-    public Collection<Collection<String>> getValues() {
+    public String[][] getValues() {
         return values;
     }
 
-    public void setValues(Collection<Collection<String>> values) {
+    public void setValues(String[][] values) {
         this.values = values;
+    }
+
+    public String getLogic() {
+        return logic;
+    }
+
+    public void setLogic(String logic) {
+        this.logic = logic;
     }
 }

@@ -7,7 +7,7 @@ import org.fao.fenix.d3p.process.impl.join.JoinLogic;
 public class AutomaticJoin implements JoinLogic{
 
     @Override
-    public Step[] process(Step... sourceStep) {
+    public Step process(Step... sourceStep) {
 
 
 

@@ -7,6 +7,15 @@ public class JoinParameter {
 
     private JoinTypes type;
     private Object value;
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public JoinTypes getType() {
         return type;
