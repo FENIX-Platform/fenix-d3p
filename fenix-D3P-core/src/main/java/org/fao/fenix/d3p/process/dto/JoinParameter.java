@@ -3,9 +3,9 @@ package org.fao.fenix.d3p.process.dto;
 
 public class JoinParameter {
 
-    public static final JoinTypes DEFAULT_JOIN_TYPE = JoinTypes.id;
+    public static final JoinValueTypes DEFAULT_JOIN_TYPE = JoinValueTypes.id;
 
-    private JoinTypes type;
+    private JoinValueTypes type;
     private Object value;
     private String name;
 
@@ -17,11 +17,11 @@ public class JoinParameter {
         this.name = name;
     }
 
-    public JoinTypes getType() {
+    public JoinValueTypes getType() {
         return type;
     }
 
-    public void setType(JoinTypes type) {
+    public void setType(JoinValueTypes type) {
         this.type = type!= null ? type: DEFAULT_JOIN_TYPE;
     }
 
