@@ -23,7 +23,7 @@ public class ManualJoin implements JoinLogic {
     @Override
     public Step process(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
 
-        //Create key DSD
+        //Create column key DSD
         JoinParameter[][] joinParameters = params.getJoins();
         List<DSDColumn> keyColumns = new LinkedList<>();
         for (int c=0; c<joinParameters[0].length; c++)
@@ -33,13 +33,14 @@ public class ManualJoin implements JoinLogic {
                     break;
                 }
 
-        //Create values DSD
+        //Create column values DSD
         List<DSDColumn> valueColumns = new LinkedList<>();
         String[][] valueParameters = params.getValues();
         if (valueParameters==null || valueParameters.length==0)
             valueParameters = new String[joinParameters.length][];
         for (int r=0; r<valueParameters.length; r++)
             if (valueParameters[r]!=null && valueParameters[r].length>0) {
+                // Tale the name of each column, and
                 Collection<DSDColumn> datasetValueColumns = getValueColumns(dsdList[r].getColumns(),joinParameters[r]);
                 Collection<String> datasetValueColumnsName = new LinkedList<>();
                 for (DSDColumn datasetValueColumn : datasetValueColumns) {
@@ -72,33 +73,42 @@ public class ManualJoin implements JoinLogic {
         return step;
     }
 
-    //celle delle matrici passate come parametro non nulle
-    //valori fissi nella join sintatticamente corretti (in base al tipo)
-    //chiave non vuota
-    //dimensioni parametri adatta alla sorgente
-    //id di colonna esistenti
-    //verifica compatibilita' colonne chiave
-    //verifica che non ci sono righe chiave con soli valori fissi
-    //verifica che non ci sono colonne chiave con soli valori fissi
-    //Verifica che tra joins e values non ci sono identificativi duplicati a livello di singolo dataset
-    //Verificare che i valori espliciti nei parametri join siano uguali a livello di singola colonna
+    /*
+        Validation steps:
+        1) Cells passed as parameters are not null
+        2) Fixed value in the join are syntactically correct
+        3) Key not empty
+        4) Dimension parameters that follows the dimension of the sources
+        5) Column Ids exist
+        6) Check compatibility key column
+        7) Check that there are not row with only fixed values in the join parameters
+        8) Check that there are not columns with only fixed values in the join parameters
+        9) Check that between joins and values there are not duplicated values at single dataset level
+        10)Check that fixed values are the same at single column level
+     */
     @Override
     public void validate(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
         JoinParameter[][] joinParameters = params.getJoins();
         String[][] valueParameters = params.getValues();
 
+        // join parameters should be not null
         if (joinParameters==null || joinParameters.length==0)
-            throw new BadRequestException();
+            throw new BadRequestException("Join parameters should be not null");
+        // Value paramenters should be not null and the number of rows of join parameters and value parameters are equal to number of step
         if (joinParameters.length!=sourceStep.length || (valueParameters!=null && valueParameters.length>0 && valueParameters.length!=sourceStep.length))
-            throw new BadRequestException();
+            throw new BadRequestException("Value parameters should be not null and the number of rows of join parameters and value parameters are equal to number of step");
 
         for (int r=0; r<joinParameters.length; r++) {
             Set<String> ids = new HashSet<>();
             boolean valueRowId = false;
 
+            // join parameters cycle
             for (int c=0; c<joinParameters[r].length; c++) {
+
+                // Check join parameters are syntactically correct and not null
                 if (joinParameters[r][c]==null || joinParameters[r][c].getType()==null || joinParameters[r][c].getValue()==null)
-                    throw new BadRequestException();
+                    throw new BadRequestException("Check join parameters are syntactically correct and not null");
+
                 Class requiredValueClass=null;
                 switch (joinParameters[r][c].getType()) {
                     case id:
@@ -106,31 +116,42 @@ public class ManualJoin implements JoinLogic {
                     case bool: requiredValueClass = Boolean.class; break;
                     case number: requiredValueClass = Number.class; break;
                 }
+                // Check type and value parameters are syntactically consistent
                 if (!requiredValueClass.isInstance(joinParameters[r][c].getValue()))
-                    throw new BadRequestException();
+                    throw new BadRequestException("Check type and value parameters are syntactically consistent");
 
                 if (joinParameters[r][c].getType() == JoinValueTypes.id) {
+                    // Check that there is not repetition of id
                     if (!ids.add((String) joinParameters[r][c].getValue()))
-                        throw new BadRequestException();
+                        throw new BadRequestException("Check that there is not repetition of id");
                     valueRowId = true;
+
+                    // Check that columns exists into the dataset
                     if (dsdList[r].findColumn((String) joinParameters[r][c].getValue()) == null)
-                        throw new BadRequestException();
+                        throw new BadRequestException("Check that columns exists into the dataset");
                 }
             }
+
+            // value parameters cycle
             if (valueParameters!=null && valueParameters.length>0)
                 for (int c=0; c<valueParameters[r].length; c++)
                     if (valueParameters[r]!=null && valueParameters[r].length>0) {
+
+                        // Check that cells into value parameters are not null
                         if (valueParameters[r][c]==null)
-                            throw new BadRequestException();
+                            throw new BadRequestException("Check that cells into value parameters are not null");
 
+                        // check that cells into value parameters are not repeated
                         if (!ids.add(valueParameters[r][c]))
-                            throw new BadRequestException();
-                        if (dsdList[r].findColumn(valueParameters[r][c]) == null)
-                            throw new BadRequestException();
-                    }
+                            throw new BadRequestException("Check that cells into value parameters are not repeated");
 
+                        // check that cells into value parameters are in the dataset
+                        if (dsdList[r].findColumn(valueParameters[r][c]) == null)
+                            throw new BadRequestException("Check that cells into value parameters are in the dataset");
+                    }
+            // check that for each row into join parameter there should be specified at least one id column
             if (!valueRowId)
-                throw new BadRequestException();
+                throw new BadRequestException("check that for each row into join parameter there should be specified at least one id column");
         }
 
         for (int c=0; c<joinParameters[0].length; c++) {
@@ -160,9 +181,9 @@ public class ManualJoin implements JoinLogic {
                     }
                 }
             }
-
+            // check that for each column into join parameter there should be specified at least one id column
             if (!valueColumnId)
-                throw new BadRequestException();
+                throw new BadRequestException("Check that for each column into join parameter there should be specified at least one id column");
         }
 
     }
@@ -175,8 +196,9 @@ public class ManualJoin implements JoinLogic {
             OjCodeList domain2 = column2.getDomain().getCodes().iterator().next();
             String id1 = domain1.getIdCodeList()+(domain1.getVersion()!=null ? '|'+domain1.getVersion() : "");
             String id2 = domain1.getIdCodeList()+(domain2.getVersion()!=null ? '|'+domain2.getVersion() : "");
+            // check that the column codes are joinable
             if (!id1.equals(id2))
-                throw new BadRequestException();
+                throw new BadRequestException("Check that the column codes are joinable");
         }
 
     }
@@ -195,12 +217,14 @@ public class ManualJoin implements JoinLogic {
             case date:
             case time: requiredType = JoinValueTypes.number; break;
         }
+        // type specified into fixed join parameter should follow the datatype fo the column
         if (requiredType!=type)
-            throw new BadRequestException();
+            throw new BadRequestException("Type specified into fixed join parameter should follow the datatype fo the column");
     }
     private void checkDomain(Object value1, JoinValueTypes type1, Object value2, JoinValueTypes type2) throws Exception {
+       // Check the type between the values in the join parameters
         if (type1!=type2 || !value1.equals(value2))
-            throw new BadRequestException();
+            throw new BadRequestException("Check the type between the values in the join parameters");
     }
 
 
@@ -322,6 +346,7 @@ public class ManualJoin implements JoinLogic {
         return column;
     }
 
+    //Create the collection of DSD columns that are sepcified into the join parameters
     private Collection<DSDColumn> getValueColumns(Collection<DSDColumn> columns, JoinParameter[] joinParameters) {
         Set<String> keysName = new HashSet<>();
         for (JoinParameter joinParameter : joinParameters)
