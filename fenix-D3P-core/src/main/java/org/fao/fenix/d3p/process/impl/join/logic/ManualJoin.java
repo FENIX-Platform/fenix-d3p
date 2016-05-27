@@ -18,7 +18,9 @@ import javax.ws.rs.BadRequestException;
 import java.util.*;
 
 public class ManualJoin implements JoinLogic {
-    private @Inject StepFactory stepFactory;
+    private
+    @Inject
+    StepFactory stepFactory;
 
     @Override
     public Step process(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
@@ -26,22 +28,32 @@ public class ManualJoin implements JoinLogic {
         //Create column key DSD
         JoinParameter[][] joinParameters = params.getJoins();
         List<DSDColumn> keyColumns = new LinkedList<>();
-        for (int c=0; c<joinParameters[0].length; c++)
-            for (int r=0; r<joinParameters.length; r++)
-                if (joinParameters[r][c].getType()== JoinValueTypes.id) {
-                    keyColumns.add(dsdList[r].findColumn((String)joinParameters[r][c].getValue()));
-                    break;
+        Set<String>[] joinColumnNames = new HashSet[joinParameters.length];
+        for (int c = 0; c < joinParameters[0].length; c++) {
+            boolean keyColumnFound = false;
+            for (int r = 0; r < joinParameters.length; r++) {
+                if (joinParameters[r][c].getType() == JoinValueTypes.id) {
+                    if (!keyColumnFound) {
+                        keyColumns.add(dsdList[r].findColumn((String) joinParameters[r][c].getValue()));
+                        keyColumnFound = true;
+                    }
+                    if (joinColumnNames[r] == null)
+                        joinColumnNames[r] = new HashSet<>();
+                    joinColumnNames[r].add((String) joinParameters[r][c].getValue());
                 }
+            }
+        }
 
         //Create column values DSD
         List<DSDColumn> valueColumns = new LinkedList<>();
         String[][] valueParameters = params.getValues();
-        if (valueParameters==null || valueParameters.length==0)
+        // if values parameters do not exist, create a structure with the length of the datasource - the key column
+        if (valueParameters == null || valueParameters.length == 0)
             valueParameters = new String[joinParameters.length][];
-        for (int r=0; r<valueParameters.length; r++)
-            if (valueParameters[r]!=null && valueParameters[r].length>0) {
-                // Tale the name of each column, and
-                Collection<DSDColumn> datasetValueColumns = getValueColumns(dsdList[r].getColumns(),joinParameters[r]);
+        for (int r = 0; r < valueParameters.length; r++)
+            if (valueParameters[r] != null && valueParameters[r].length > 0) {
+                // // if values parameters exist, update value column with those values
+                Collection<DSDColumn> datasetValueColumns = getValueColumns(dsdList[r].getColumns(), joinParameters[r]);
                 Collection<String> datasetValueColumnsName = new LinkedList<>();
                 for (DSDColumn datasetValueColumn : datasetValueColumns) {
                     datasetValueColumnsName.add(datasetValueColumn.getId());
@@ -49,8 +61,29 @@ public class ManualJoin implements JoinLogic {
                 }
                 valueParameters[r] = datasetValueColumnsName.toArray(new String[datasetValueColumnsName.size()]);
             } else
-                for (int c = 0; c < valueParameters[r].length; c++)
-                    valueColumns.add(updateId(dsdList[r].findColumn(valueParameters[r][c]), sourceStep[r].getRid().getId()));
+                //else fill it with the remaining columns of the dataset
+                for (int c = 0; c < dsdList[r].getColumns().size(); c++)
+
+                    // if it is not a key column
+                    if (!joinColumnNames[r].contains((((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c)).getId())) {
+                        DSDColumn column =((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c);
+                        // when a user does not specify anything
+                        if(valueParameters[r]== null) {
+                            int sizeColumnDataset = dsdList[r].getColumns().size()- joinColumnNames[r].size();
+                            valueParameters[r] = new String[sizeColumnDataset];
+                        }
+
+                        for(int h=0; h< valueParameters[r].length; h++) {
+                            if(valueParameters[r][h]== null) {
+                                valueParameters[r][h] = column.getId();
+                                break;
+                            }
+                        }
+
+                        valueColumns.add(updateId(column, sourceStep[r].getRid().getId()));
+
+                    }
+
 
         //Create result dsd
         Collection<DSDColumn> joinedColumns = new LinkedList<>();
@@ -65,9 +98,9 @@ public class ManualJoin implements JoinLogic {
 
         //Create result
         Collection<Object> queryParameters = new LinkedList<>();
-        QueryStep step = (QueryStep)stepFactory.getInstance(StepType.query);
+        QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
-        step.setData(createQuery(sourceStep,joinParameters,valueParameters,queryParameters));
+        step.setData(createQuery(sourceStep, joinParameters, valueParameters, queryParameters,keyColumns));
         step.setParams(queryParameters.toArray());
         step.setTypes(null);
         return step;
@@ -92,29 +125,35 @@ public class ManualJoin implements JoinLogic {
         String[][] valueParameters = params.getValues();
 
         // join parameters should be not null
-        if (joinParameters==null || joinParameters.length==0)
+        if (joinParameters == null || joinParameters.length == 0)
             throw new BadRequestException("Join parameters should be not null");
         // Value paramenters should be not null and the number of rows of join parameters and value parameters are equal to number of step
-        if (joinParameters.length!=sourceStep.length || (valueParameters!=null && valueParameters.length>0 && valueParameters.length!=sourceStep.length))
+        if (joinParameters.length != sourceStep.length || (valueParameters != null && valueParameters.length > 0 && valueParameters.length != sourceStep.length))
             throw new BadRequestException("Value parameters should be not null and the number of rows of join parameters and value parameters are equal to number of step");
 
-        for (int r=0; r<joinParameters.length; r++) {
+        for (int r = 0; r < joinParameters.length; r++) {
             Set<String> ids = new HashSet<>();
             boolean valueRowId = false;
 
             // join parameters cycle
-            for (int c=0; c<joinParameters[r].length; c++) {
+            for (int c = 0; c < joinParameters[r].length; c++) {
 
                 // Check join parameters are syntactically correct and not null
-                if (joinParameters[r][c]==null || joinParameters[r][c].getType()==null || joinParameters[r][c].getValue()==null)
+                if (joinParameters[r][c] == null || joinParameters[r][c].getType() == null || joinParameters[r][c].getValue() == null)
                     throw new BadRequestException("Check join parameters are syntactically correct and not null");
 
-                Class requiredValueClass=null;
+                Class requiredValueClass = null;
                 switch (joinParameters[r][c].getType()) {
                     case id:
-                    case text: requiredValueClass = String.class; break;
-                    case bool: requiredValueClass = Boolean.class; break;
-                    case number: requiredValueClass = Number.class; break;
+                    case text:
+                        requiredValueClass = String.class;
+                        break;
+                    case bool:
+                        requiredValueClass = Boolean.class;
+                        break;
+                    case number:
+                        requiredValueClass = Number.class;
+                        break;
                 }
                 // Check type and value parameters are syntactically consistent
                 if (!requiredValueClass.isInstance(joinParameters[r][c].getValue()))
@@ -133,12 +172,12 @@ public class ManualJoin implements JoinLogic {
             }
 
             // value parameters cycle
-            if (valueParameters!=null && valueParameters.length>0)
-                for (int c=0; c<valueParameters[r].length; c++)
-                    if (valueParameters[r]!=null && valueParameters[r].length>0) {
+            if (valueParameters != null && valueParameters.length > 0)
+                for (int c = 0; c < valueParameters[r].length; c++)
+                    if (valueParameters[r] != null && valueParameters[r].length > 0) {
 
                         // Check that cells into value parameters are not null
-                        if (valueParameters[r][c]==null)
+                        if (valueParameters[r][c] == null)
                             throw new BadRequestException("Check that cells into value parameters are not null");
 
                         // check that cells into value parameters are not repeated
@@ -154,26 +193,26 @@ public class ManualJoin implements JoinLogic {
                 throw new BadRequestException("check that for each row into join parameter there should be specified at least one id column");
         }
 
-        for (int c=0; c<joinParameters[0].length; c++) {
+        for (int c = 0; c < joinParameters[0].length; c++) {
             Object value = null;
             JoinValueTypes type = null;
             DSDColumn column = null;
             boolean valueColumnId = false;
 
-            for (int r=0; r<joinParameters.length; r++) {
+            for (int r = 0; r < joinParameters.length; r++) {
                 if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                     valueColumnId = true;
                     DSDColumn currentColumn = dsdList[r].findColumn((String) joinParameters[r][c].getValue());
-                    if (column!=null)
+                    if (column != null)
                         checkDomain(column, currentColumn);
-                    else if (value!=null)
+                    else if (value != null)
                         checkDomain(currentColumn, value, type);
                     else
                         column = currentColumn;
                 } else {
-                    if (column!=null)
+                    if (column != null)
                         checkDomain(column, joinParameters[r][c].getValue(), joinParameters[r][c].getType());
-                    else if (value!=null)
+                    else if (value != null)
                         checkDomain(value, type, joinParameters[r][c].getValue(), joinParameters[r][c].getType());
                     else {
                         value = joinParameters[r][c].getValue();
@@ -189,48 +228,56 @@ public class ManualJoin implements JoinLogic {
     }
 
     private void checkDomain(DSDColumn column1, DSDColumn column2) throws Exception {
-        if (column1.getDataType()!=column2.getDataType())
+        if (column1.getDataType() != column2.getDataType())
             throw new BadRequestException();
-        if (column1.getDataType()==DataType.code) {
+        if (column1.getDataType() == DataType.code) {
             OjCodeList domain1 = column1.getDomain().getCodes().iterator().next();
             OjCodeList domain2 = column2.getDomain().getCodes().iterator().next();
-            String id1 = domain1.getIdCodeList()+(domain1.getVersion()!=null ? '|'+domain1.getVersion() : "");
-            String id2 = domain1.getIdCodeList()+(domain2.getVersion()!=null ? '|'+domain2.getVersion() : "");
+            String id1 = domain1.getIdCodeList() + (domain1.getVersion() != null ? '|' + domain1.getVersion() : "");
+            String id2 = domain1.getIdCodeList() + (domain2.getVersion() != null ? '|' + domain2.getVersion() : "");
             // check that the column codes are joinable
             if (!id1.equals(id2))
                 throw new BadRequestException("Check that the column codes are joinable");
         }
 
     }
+
     private void checkDomain(DSDColumn column1, Object value, JoinValueTypes type) throws Exception {
         JoinValueTypes requiredType = null;
         switch (column1.getDataType()) {
-            case bool: requiredType = JoinValueTypes.bool; break;
+            case bool:
+                requiredType = JoinValueTypes.bool;
+                break;
             case code:
             case customCode:
             case enumeration:
-            case text: requiredType = JoinValueTypes.text; break;
+            case text:
+                requiredType = JoinValueTypes.text;
+                break;
             case number:
             case percentage:
             case year:
             case month:
             case date:
-            case time: requiredType = JoinValueTypes.number; break;
+            case time:
+                requiredType = JoinValueTypes.number;
+                break;
         }
         // type specified into fixed join parameter should follow the datatype fo the column
-        if (requiredType!=type)
+        if (requiredType != type)
             throw new BadRequestException("Type specified into fixed join parameter should follow the datatype fo the column");
     }
+
     private void checkDomain(Object value1, JoinValueTypes type1, Object value2, JoinValueTypes type2) throws Exception {
-       // Check the type between the values in the join parameters
-        if (type1!=type2 || !value1.equals(value2))
+        // Check the type between the values in the join parameters
+        if (type1 != type2 || !value1.equals(value2))
             throw new BadRequestException("Check the type between the values in the join parameters");
     }
 
 
     //Post process utils
 
-    private void createKey (List<DSDColumn> keyColumns, List<DSDColumn> valueColumns, DSDDataset[] dsdList, JoinParameter[][] joinParameters, String[][] valueParameters) {
+    private void createKey(List<DSDColumn> keyColumns, List<DSDColumn> valueColumns, DSDDataset[] dsdList, JoinParameter[][] joinParameters, String[][] valueParameters) {
         try {
             for (int r = 0; r < dsdList.length; r++) {
                 List<String> joinId = new ArrayList<>();
@@ -241,7 +288,7 @@ public class ManualJoin implements JoinLogic {
                 for (DSDColumn column : dsdList[r].getColumns())
                     if (column.getKey()) {
                         int index = joinId.indexOf(column.getId());
-                        if (index>=0)
+                        if (index >= 0)
                             keyColumns.get(index).setKey(true);
                         else if (!valuesId.contains(column.getId()))
                             throw new Exception();
@@ -255,7 +302,8 @@ public class ManualJoin implements JoinLogic {
         }
 
     }
-    private void createSubjects (List<DSDColumn> keyColumns, List<DSDColumn> valueColumns, DSDDataset[] dsdList, JoinParameter[][] joinParameters, String[][] valueParameters) {
+
+    private void createSubjects(List<DSDColumn> keyColumns, List<DSDColumn> valueColumns, DSDDataset[] dsdList, JoinParameter[][] joinParameters, String[][] valueParameters) {
         //dataset subjects analysis
         try {
             Map<String, Integer> subjectsIndex = new HashMap<>();
@@ -268,13 +316,13 @@ public class ManualJoin implements JoinLogic {
                 for (DSDColumn column : dsdList[r].getColumns())
                     if (column.getSubject() != null) {
                         int index = joinId.indexOf(column.getId());
-                        if (index>=0)
+                        if (index >= 0)
                             keyColumns.get(index).setSubject(column.getSubject());
                         else
                             index = valuesId.indexOf(column.getId());
 
                         Integer oldIndex = subjectsIndex.put(column.getSubject(), valuesId.indexOf(column.getId()));
-                        if (oldIndex!=null && oldIndex!=index)
+                        if (oldIndex != null && oldIndex != index)
                             throw new Exception();
                     }
             }
@@ -287,51 +335,55 @@ public class ManualJoin implements JoinLogic {
     }
 
 
-
-    private String createQuery(Step[] steps, JoinParameter[][] joinParameters, String[][] valueParameters, Collection<Object> parameters) {
+    private String createQuery(Step[] steps, JoinParameter[][] joinParameters, String[][] valueParameters, Collection<Object> parameters, List<DSDColumn> keyColumns) {
         //retrieve tables name
         String[] tablesName = new String[steps.length];
-        for (int i=0; i<steps.length; i++)
-            tablesName[i] = steps[i].getType()==StepType.table ? (String)steps[i].getData() : steps[i].getRid().getId();
+        for (int i = 0; i < steps.length; i++)
+            tablesName[i] = steps[i].getType() == StepType.table ? (String) steps[i].getData() : steps[i].getRid().getId();
         //Create select
         String[] joinColumnsName = new String[joinParameters[0].length];
         Object[] joinColumnsValues = new Object[joinParameters[0].length];
         StringBuilder select = new StringBuilder("SELECT ");
-        for (int c=0; c<joinColumnsName.length; c++)
-            for (int r=0; r<joinParameters.length; r++)
-                if (joinParameters[r][c].getType()== JoinValueTypes.id)
-                    select.append(joinColumnsName[c] = tablesName[r]+'.'+joinParameters[r][c].getValue()).append(',');
+        for (int c = 0; c < joinColumnsName.length; c++)
+            for (int r = 0; r < joinParameters.length; r++)
+                if (joinParameters[r][c].getType() == JoinValueTypes.id)
+                    select.append(joinColumnsName[c] = tablesName[r] + '.' + joinParameters[r][c].getValue()).append(',');
                 else
                     joinColumnsValues[c] = joinParameters[r][c].getValue();
-        for (int r=0; r<valueParameters.length; r++)
-            for (int c=0; c<valueParameters[r].length; c++)
-                select.append(tablesName[r]+'.'+valueParameters[r][c]).append(',');
-        select.setLength(select.length()-1);
+        for (int r = 0; r < valueParameters.length; r++)
+            for (int c = 0; c < valueParameters[r].length; c++)
+                if(valueParameters[r][c]!= null)
+                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(',');
+        select.setLength(select.length() - 1);
         //create join
-        select.append(" FROM ").append(steps[0].getType()==StepType.table ? (String)steps[0].getData() : '('+(String)steps[0].getData()+") as " + steps[0].getRid().getId());
-        for (int r=1; r<joinParameters.length; r++) {
-            select.append(" JOIN ").append(steps[r].getType()==StepType.table ? (String)steps[r].getData() : '('+(String)steps[r].getData()+") as " + steps[r].getRid().getId()).append(" ON (");
-            if (steps[r].getType()==StepType.query) {
+        select.append(" FROM ").append(steps[0].getType() == StepType.table ? (String) steps[0].getData() : '(' + (String) steps[0].getData() + ") as " + steps[0].getRid().getId());
+        for (int r = 1; r < joinParameters.length; r++) {
+            select.append(" JOIN ").append(steps[r].getType() == StepType.table ? (String) steps[r].getData() : '(' + (String) steps[r].getData() + ") as " + steps[r].getRid().getId()).append(" ON (");
+            if (steps[r].getType() == StepType.query) {
                 Object[] existingParams = ((QueryStep) steps[r]).getParams();
                 if (existingParams != null && existingParams.length > 0)
                     parameters.addAll(Arrays.asList(existingParams));
             }
 
             for (int c = 0; c < joinParameters[r].length; c++)
-                if (joinParameters[0][c].getType()== JoinValueTypes.id) {
+                if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                     select.append(joinColumnsName[c]).append(" = ");
-                    if (joinParameters[r][c].getType()== JoinValueTypes.id) {
+                    if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                         select.append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
+                        if(c< joinParameters.length-1)
+                            select.append(" AND ");
                     } else {
                         select.append('?');
                         parameters.add(joinParameters[r][c].getValue());
                     }
-                } else if(joinParameters[r][c].getType()== JoinValueTypes.id) {
+                } else if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                     select.append("? = ").append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
                     parameters.add(joinColumnsValues[c]);
                 }
 
-            select.setLength(select.length()-4);
+/*
+            select.setLength(select.length() - 4);
+*/
             select.append(')');
         }
 
@@ -342,21 +394,23 @@ public class ManualJoin implements JoinLogic {
     //Pre process utils
 
     private DSDColumn updateId(DSDColumn column, String prefix) {
-        column.setId(prefix+"_"+column.getId());
-        return column;
+        DSDColumn result = column.clone();
+        result.setId(prefix + "_" + column.getId());
+        return result;
     }
 
     //Create the collection of DSD columns that are sepcified into the join parameters
     private Collection<DSDColumn> getValueColumns(Collection<DSDColumn> columns, JoinParameter[] joinParameters) {
         Set<String> keysName = new HashSet<>();
         for (JoinParameter joinParameter : joinParameters)
-            if (joinParameter.getType()== JoinValueTypes.id)
-                keysName.add((String)joinParameter.getValue());
+            if (joinParameter.getType() == JoinValueTypes.id)
+                keysName.add((String) joinParameter.getValue());
         Collection<DSDColumn> valueColumns = new LinkedList<>();
         for (DSDColumn column : columns)
             if (!keysName.contains(column.getId()))
                 valueColumns.add(column);
         return valueColumns;
     }
+
 
 }
