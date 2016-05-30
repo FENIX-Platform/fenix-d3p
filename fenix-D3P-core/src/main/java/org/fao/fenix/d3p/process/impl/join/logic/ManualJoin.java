@@ -101,6 +101,8 @@ public class ManualJoin implements JoinLogic {
         QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         step.setData(createQuery(sourceStep, joinParameters, valueParameters, queryParameters,keyColumns));
+
+        System.out.println("create QUERY: ");
         step.setParams(queryParameters.toArray());
         step.setTypes(null);
         return step;
@@ -344,12 +346,19 @@ public class ManualJoin implements JoinLogic {
         String[] joinColumnsName = new String[joinParameters[0].length];
         Object[] joinColumnsValues = new Object[joinParameters[0].length];
         StringBuilder select = new StringBuilder("SELECT ");
-        for (int c = 0; c < joinColumnsName.length; c++)
-            for (int r = 0; r < joinParameters.length; r++)
-                if (joinParameters[r][c].getType() == JoinValueTypes.id)
+        for (int c = 0; c < joinColumnsName.length; c++) {
+            boolean columnFound = false;
+            for (int r = 0; r < joinParameters.length  ; r++) {
+                if (joinParameters[r][c].getType() == JoinValueTypes.id && !columnFound) {
                     select.append(joinColumnsName[c] = tablesName[r] + '.' + joinParameters[r][c].getValue()).append(',');
-                else
+                    columnFound = true;
+                }else{
                     joinColumnsValues[c] = joinParameters[r][c].getValue();
+                }
+            }
+        }
+              /*  else
+                    joinColumnsValues[c] = joinParameters[r][c].getValue();*/
         for (int r = 0; r < valueParameters.length; r++)
             for (int c = 0; c < valueParameters[r].length; c++)
                 if(valueParameters[r][c]!= null)
@@ -365,29 +374,41 @@ public class ManualJoin implements JoinLogic {
                     parameters.addAll(Arrays.asList(existingParams));
             }
 
-            for (int c = 0; c < joinParameters[r].length; c++)
-                if (joinParameters[r][c].getType() == JoinValueTypes.id) {
+            // se la prima riga e un id
+            for (int c = 0; c < joinParameters[r].length; c++) {
+                if (joinParameters[0][c].getType() == JoinValueTypes.id) {
+                    // aggiungi i nomi delle colonne join in cui ci sono gli id
                     select.append(joinColumnsName[c]).append(" = ");
+                    // se e un id la riga presa
                     if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                         select.append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
-                        if(c< joinParameters.length-1)
-                            select.append(" AND ");
                     } else {
                         select.append('?');
                         parameters.add(joinParameters[r][c].getValue());
                     }
                 } else if (joinParameters[r][c].getType() == JoinValueTypes.id) {
+                    // ok, quando non ci sono gli id
                     select.append("? = ").append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
                     parameters.add(joinColumnsValues[c]);
                 }
-
-/*
+                select.append(" AND ");
+            }
             select.setLength(select.length() - 4);
-*/
             select.append(')');
         }
 
+        testFilter(select);
+
+
         return select.toString();
+    }
+
+    private void testFilter (StringBuilder select) {
+
+        select.append(
+                " limit 10 "
+        );
+
     }
 
 
