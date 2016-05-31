@@ -230,7 +230,7 @@ public class ManualJoin implements JoinLogic {
 
     private void checkDomain(DSDColumn column1, DSDColumn column2) throws Exception {
         if (column1.getDataType() != column2.getDataType())
-            throw new BadRequestException();
+            throw new BadRequestException("Please check that the subject of column "+ column1.getId()+" is compatible with column "+column2.getId());
         if (column1.getDataType() == DataType.code) {
             OjCodeList domain1 = column1.getDomain().getCodes().iterator().next();
             OjCodeList domain2 = column2.getDomain().getCodes().iterator().next();
@@ -305,34 +305,38 @@ public class ManualJoin implements JoinLogic {
     }
 
     private void createSubjects(List<DSDColumn> keyColumns, List<DSDColumn> valueColumns, DSDDataset[] dsdList, JoinParameter[][] joinParameters, String[][] valueParameters) {
+
+        Set<String> blacklistSubject = new HashSet<>();
         //dataset subjects analysis
-        try {
-            Map<String, Integer> subjectsIndex = new HashMap<>();
-            for (int r = 0; r < dsdList.length; r++) {
-                List<String> joinId = new ArrayList<>();
-                for (JoinParameter joinParameter : joinParameters[r])
-                    joinId.add(joinParameter.getType() == JoinValueTypes.id ? (String) joinParameter.getValue() : null);
-                List<String> valuesId = Arrays.asList(valueParameters[r]);
+        Map<String, Integer> subjectsIndex = new HashMap<>();
+        for (int r = 0; r < dsdList.length; r++) {
+            List<String> joinId = new ArrayList<>();
+            for (JoinParameter joinParameter : joinParameters[r])
+                joinId.add(joinParameter.getType() == JoinValueTypes.id ? (String) joinParameter.getValue() : null);
+            List<String> valuesId = Arrays.asList(valueParameters[r]);
 
-                for (DSDColumn column : dsdList[r].getColumns())
-                    if (column.getSubject() != null) {
-                        int index = joinId.indexOf(column.getId());
-                        if (index >= 0)
-                            keyColumns.get(index).setSubject(column.getSubject());
-                        else
-                            index = valuesId.indexOf(column.getId());
-
-                        Integer oldIndex = subjectsIndex.put(column.getSubject(), valuesId.indexOf(column.getId()));
+            for (DSDColumn column : dsdList[r].getColumns())
+                if (column.getSubject() != null) {
+                    int index = joinId.indexOf(column.getId());
+                    if (index >= 0)
+                        keyColumns.get(index).setSubject(column.getSubject());
+                    else
+                        index = valuesId.indexOf(column.getId());
+                    if (index >= 0) {
+                        Integer oldIndex = subjectsIndex.put(column.getSubject(), index);
                         if (oldIndex != null && oldIndex != index)
-                            throw new Exception();
+                            blacklistSubject.add(column.getSubject());
                     }
-            }
-        } catch (Exception ex) {
-            for (DSDColumn column : keyColumns)
-                column.setSubject(null);
-            for (DSDColumn column : valueColumns)
-                column.setSubject(null);
+                }
         }
+
+        for (DSDColumn column : keyColumns)
+            if (blacklistSubject.contains(column.getSubject()))
+                column.setSubject(null);
+        for (DSDColumn column : valueColumns)
+            if (blacklistSubject.contains(column.getSubject()))
+                column.setSubject(null);
+
     }
 
     private String createQuery(Step[] steps, JoinParameter[][] joinParameters, String[][] valueParameters, Collection<Object> parameters, List<DSDColumn> keyColumns) {
@@ -399,7 +403,7 @@ public class ManualJoin implements JoinLogic {
             select.setLength(select.length() - 4);
             select.append(')');
         }
-        testFilter(select);
+
 
         return select.toString();
     }
