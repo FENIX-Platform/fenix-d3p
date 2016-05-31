@@ -53,7 +53,7 @@ public class ManualJoin implements JoinLogic {
         for (int r = 0; r < valueParameters.length; r++)
             if (valueParameters[r] != null && valueParameters[r].length > 0) {
                 // // if values parameters exist, update value column with those values
-                Collection<DSDColumn> datasetValueColumns = getValueColumns(dsdList[r].getColumns(), joinParameters[r]);
+                Collection<DSDColumn> datasetValueColumns = getValueColumns(dsdList[r].getColumns(), valueParameters[r]);
                 Collection<String> datasetValueColumnsName = new LinkedList<>();
                 for (DSDColumn datasetValueColumn : datasetValueColumns) {
                     datasetValueColumnsName.add(datasetValueColumn.getId());
@@ -429,6 +429,17 @@ public class ManualJoin implements JoinLogic {
         Collection<DSDColumn> valueColumns = new LinkedList<>();
         for (DSDColumn column : columns)
             if (!keysName.contains(column.getId()))
+                valueColumns.add(column);
+        return valueColumns;
+    }
+
+    private Collection<DSDColumn> getValueColumns(Collection<DSDColumn> columns, String[] rowValueParameters) {
+        Set<String> keysName = new HashSet<>();
+        for (String valueColumn : rowValueParameters)
+                keysName.add(valueColumn);
+        Collection<DSDColumn> valueColumns = new LinkedList<>();
+        for (DSDColumn column : columns)
+            if (keysName.contains(column.getId()))
                 valueColumns.add(column);
         return valueColumns;
     }
