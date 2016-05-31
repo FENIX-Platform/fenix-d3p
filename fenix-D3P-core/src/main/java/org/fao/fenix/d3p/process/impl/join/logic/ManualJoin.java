@@ -66,24 +66,23 @@ public class ManualJoin implements JoinLogic {
 
                     // if it is not a key column
                     if (!joinColumnNames[r].contains((((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c)).getId())) {
-                        DSDColumn column =((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c);
-                        // when a user does not specify anything
-                        if(valueParameters[r]== null) {
-                            int sizeColumnDataset = dsdList[r].getColumns().size()- joinColumnNames[r].size();
+                        DSDColumn column = ((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c);
+                        // when a user does not specify anything, take all the columns in the dataset
+                        if (valueParameters[r] == null) {
+                            int sizeColumnDataset = dsdList[r].getColumns().size() - joinColumnNames[r].size();
                             valueParameters[r] = new String[sizeColumnDataset];
                         }
 
-                        for(int h=0; h< valueParameters[r].length; h++) {
-                            if(valueParameters[r][h]== null) {
+                        // fill value parameters
+                        for (int h = 0; h < valueParameters[r].length; h++) {
+                            if (valueParameters[r][h] == null) {
                                 valueParameters[r][h] = column.getId();
                                 break;
                             }
                         }
-
+                        // update value column with the new id
                         valueColumns.add(updateId(column, sourceStep[r].getRid().getId()));
-
                     }
-
 
         //Create result dsd
         Collection<DSDColumn> joinedColumns = new LinkedList<>();
@@ -100,7 +99,7 @@ public class ManualJoin implements JoinLogic {
         Collection<Object> queryParameters = new LinkedList<>();
         QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
-        step.setData(createQuery(sourceStep, joinParameters, valueParameters, queryParameters,keyColumns));
+        step.setData(createQuery(sourceStep, joinParameters, valueParameters, queryParameters, keyColumns));
 
         System.out.println("create QUERY: ");
         step.setParams(queryParameters.toArray());
@@ -336,7 +335,6 @@ public class ManualJoin implements JoinLogic {
         }
     }
 
-
     private String createQuery(Step[] steps, JoinParameter[][] joinParameters, String[][] valueParameters, Collection<Object> parameters, List<DSDColumn> keyColumns) {
         //retrieve tables name
         String[] tablesName = new String[steps.length];
@@ -346,24 +344,26 @@ public class ManualJoin implements JoinLogic {
         String[] joinColumnsName = new String[joinParameters[0].length];
         Object[] joinColumnsValues = new Object[joinParameters[0].length];
         StringBuilder select = new StringBuilder("SELECT ");
+
+        // select key join columns
         for (int c = 0; c < joinColumnsName.length; c++) {
             boolean columnFound = false;
-            for (int r = 0; r < joinParameters.length  ; r++) {
+            for (int r = 0; r < joinParameters.length; r++) {
                 if (joinParameters[r][c].getType() == JoinValueTypes.id && !columnFound) {
                     select.append(joinColumnsName[c] = tablesName[r] + '.' + joinParameters[r][c].getValue()).append(',');
                     columnFound = true;
-                }else{
+                } else {
                     joinColumnsValues[c] = joinParameters[r][c].getValue();
                 }
             }
         }
-              /*  else
-                    joinColumnsValues[c] = joinParameters[r][c].getValue();*/
+        // select value columns
         for (int r = 0; r < valueParameters.length; r++)
             for (int c = 0; c < valueParameters[r].length; c++)
-                if(valueParameters[r][c]!= null)
+                if (valueParameters[r][c] != null)
                     select.append(tablesName[r] + '.' + valueParameters[r][c]).append(',');
         select.setLength(select.length() - 1);
+
         //create join
         select.append(" FROM ").append(steps[0].getType() == StepType.table ? (String) steps[0].getData() : '(' + (String) steps[0].getData() + ") as " + steps[0].getRid().getId());
         for (int r = 1; r < joinParameters.length; r++) {
@@ -374,41 +374,38 @@ public class ManualJoin implements JoinLogic {
                     parameters.addAll(Arrays.asList(existingParams));
             }
 
-            // se la prima riga e un id
+            // in every columns, if the first row is an id
             for (int c = 0; c < joinParameters[r].length; c++) {
                 if (joinParameters[0][c].getType() == JoinValueTypes.id) {
-                    // aggiungi i nomi delle colonne join in cui ci sono gli id
+                    // add the names of the columns where type is id
                     select.append(joinColumnsName[c]).append(" = ");
-                    // se e un id la riga presa
                     if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                         select.append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
-                    } else {
+                    } else
+                    // otherwise add a parameter
+                    {
                         select.append('?');
                         parameters.add(joinParameters[r][c].getValue());
                     }
-                } else if (joinParameters[r][c].getType() == JoinValueTypes.id) {
-                    // ok, quando non ci sono gli id
+                }
+                // otherwise if the first row does not contain an id
+                else if (joinParameters[r][c].getType() == JoinValueTypes.id) {
                     select.append("? = ").append(tablesName[r]).append('.').append(joinParameters[r][c].getValue());
                     parameters.add(joinColumnsValues[c]);
                 }
+                // add an AND if it is in the same row
                 select.append(" AND ");
             }
             select.setLength(select.length() - 4);
             select.append(')');
         }
-
         testFilter(select);
-
 
         return select.toString();
     }
 
-    private void testFilter (StringBuilder select) {
-
-        select.append(
-                " limit 10 "
-        );
-
+    private void testFilter(StringBuilder select) {
+        select.append(" limit 10 ");
     }
 
 
@@ -433,10 +430,11 @@ public class ManualJoin implements JoinLogic {
         return valueColumns;
     }
 
+    //Create the collection of DSD columns that are specified into the join parameters
     private Collection<DSDColumn> getValueColumns(Collection<DSDColumn> columns, String[] rowValueParameters) {
         Set<String> keysName = new HashSet<>();
         for (String valueColumn : rowValueParameters)
-                keysName.add(valueColumn);
+            keysName.add(valueColumn);
         Collection<DSDColumn> valueColumns = new LinkedList<>();
         for (DSDColumn column : columns)
             if (keysName.contains(column.getId()))
