@@ -62,6 +62,7 @@ public class FlowManager {
                 try {
                     return flowManager.process(sourceSteps, resultRidList, processes, flow);
                 } catch (UnsupportedOperationException ex) {
+                    System.out.println("here!");
                     //Nothing to do here to try with the next flow manager
                 }
             }

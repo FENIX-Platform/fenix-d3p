@@ -2,10 +2,11 @@ package org.fao.fenix.d3p.dto;
 
 import org.fao.fenix.commons.utils.database.DataIterator;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
+import org.fao.fenix.d3p.process.ProcessFactory;
 
 import javax.inject.Inject;
-import java.sql.Connection;
-import java.sql.ResultSet;
+import javax.ws.rs.NotAcceptableException;
+import java.sql.*;
 import java.util.Iterator;
 
 public class QueryStep extends Step<String> {
@@ -21,7 +22,16 @@ public class QueryStep extends Step<String> {
 
     @Override
     public Iterator<Object[]> getData(Connection connection) throws Exception {
-        ResultSet rawData = databaseUtils.fillStatement(connection.prepareStatement(getData()), getTypes(), getParams()).executeQuery();
+        PreparedStatement statement = connection.prepareStatement(getData());
+        if(ProcessFactory.getTimeout()!= null)
+            statement.setQueryTimeout(ProcessFactory.getTimeout());
+        ResultSet rawData = null;
+        try {
+            rawData = databaseUtils.fillStatement(statement, getTypes(), getParams()).executeQuery();
+        } catch (SQLException ex) {
+            if( ex.getSQLState().equals("57014"))
+                throw new  NotAcceptableException();
+        }
         return new DataIterator(rawData, null, null, null);
     }
 

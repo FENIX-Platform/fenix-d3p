@@ -1,25 +1,23 @@
 package org.fao.fenix.d3p.dto;
 
-import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
-import org.fao.fenix.commons.msd.dto.full.DSDDataset;
-import org.fao.fenix.commons.msd.dto.templates.identification.DSDCodelist;
 import org.fao.fenix.commons.utils.database.DataIterator;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.cache.CacheFactory;
-import org.fao.fenix.d3s.cache.D3SCache;
-import org.fao.fenix.d3s.cache.manager.CacheManager;
-import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
+import org.fao.fenix.d3p.process.ProcessFactory;
 
 import javax.inject.Inject;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.util.Collection;
+import javax.ws.rs.NotAcceptableException;
+import java.sql.*;
 import java.util.Iterator;
 
 public class TableStep extends Step<String> {
-    private @Inject DatabaseUtils databaseUtils;
-    private @Inject CacheFactory cacheFactory;
+    private
+    @Inject
+    DatabaseUtils databaseUtils;
+    private
+    @Inject
+    CacheFactory cacheFactory;
 
 
     @Override
@@ -29,7 +27,16 @@ public class TableStep extends Step<String> {
 
     @Override
     public Iterator<Object[]> getData(Connection connection) throws Exception {
-        ResultSet rawData = connection.createStatement().executeQuery(getQuery());
+        Statement statement = connection.createStatement();
+        if (ProcessFactory.getTimeout() != null)
+            statement.setQueryTimeout(ProcessFactory.getTimeout());
+        ResultSet rawData = null;
+        try {
+            statement.executeQuery(getQuery());
+        } catch (SQLException ex) {
+            if (ex.getSQLState().equals("57014"))
+                throw new NotAcceptableException();
+        }
         return new DataIterator(rawData, connection, null, null);
     }
 
@@ -46,7 +53,7 @@ public class TableStep extends Step<String> {
         StringBuilder query = new StringBuilder();
         for (DSDColumn column : getDsd().getColumns())
             query.append(',').append(column.getId());
-        return "select "+query.substring(1)+" from "+getData();
+        return "select " + query.substring(1) + " from " + getData();
     }
 
 }
