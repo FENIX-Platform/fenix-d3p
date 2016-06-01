@@ -404,6 +404,9 @@ public class ManualJoin implements JoinLogic {
             select.append(')');
         }
 
+/*
+        testFilter(select);
+*/
 
         return select.toString();
     }

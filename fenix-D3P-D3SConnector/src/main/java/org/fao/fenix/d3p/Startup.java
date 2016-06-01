@@ -14,20 +14,31 @@ import javax.servlet.annotation.WebListener;
 import java.io.File;
 import java.util.Collections;
 
-@WebListener ("")
-public class Startup  implements ServletContextListener, InitListener {
-    private @Inject ProcessFactory processFactory;
-    private @Inject RulesFactory rulesFactory;
-    private @Inject MainController d3sController;
+@WebListener("")
+public class Startup implements ServletContextListener, InitListener {
+    private
+    @Inject
+    ProcessFactory processFactory;
+    private
+    @Inject
+    RulesFactory rulesFactory;
+    private
+    @Inject
+    MainController d3sController;
 
     @Override
     public void init(Properties d3sInitParameters) throws Exception {
         try {
             //Init modules
-            processFactory.init(getInitParameter("process.impl.package"));
+            String timeoutParameter = getInitParameter("process.timeout");
+            processFactory.init(
+                    getInitParameter("process.impl.package"),
+                    timeoutParameter != null && timeoutParameter.trim().length() > 0 ? Integer.valueOf(timeoutParameter) : null
+            );
+
             rulesFactory.init(getInitParameter("rules.impl.package"));
         } catch (Exception e) {
-            System.err.println("D3P initialization error: "+e.getMessage());
+            System.err.println("D3P initialization error: " + e.getMessage());
         }
     }
 
@@ -39,11 +50,11 @@ public class Startup  implements ServletContextListener, InitListener {
             Properties initParameters = getInitParameters();
             ServletContext context = servletContextEvent.getServletContext();
             for (Object key : Collections.list(context.getInitParameterNames()))
-                initParameters.setProperty((String)key, context.getInitParameter((String)key));
+                initParameters.setProperty((String) key, context.getInitParameter((String) key));
 
             d3sController.registerListener(this);
         } catch (Exception e) {
-            System.err.println("D3P initialization error: "+e.getMessage());
+            System.err.println("D3P initialization error: " + e.getMessage());
         }
     }
 
@@ -54,14 +65,18 @@ public class Startup  implements ServletContextListener, InitListener {
 
     //Utils
     private static Properties initParameters;
+
     public static Properties getInitParameters() throws Exception {
-        if (initParameters ==null)
+        if (initParameters == null)
             initParameters = Properties.getInstance(
                     "/org/fao/fenix/config/d3p.properties",
                     "file:config/d3p.properties"
             );
         return initParameters;
     }
-    public String getInitParameter(String key) throws Exception { return getInitParameters().getProperty(key); }
+
+    public String getInitParameter(String key) throws Exception {
+        return getInitParameters().getProperty(key);
+    }
 
 }

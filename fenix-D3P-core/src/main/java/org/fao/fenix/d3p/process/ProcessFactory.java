@@ -13,10 +13,13 @@ import java.util.Set;
 
 @ApplicationScoped
 public class ProcessFactory {
+    private static Integer timeout;
     private @Inject Instance<Process> instances;
     private Map<String, Class<? extends Process>> processesClass = new HashMap<>();
 
-    public void init(String basePackage) {
+    public void init(String basePackage, Integer timeout) {
+        ProcessFactory.timeout = timeout;
+
         Reflections reflections = new Reflections(basePackage);
         Set<Class<? extends Process>> subTypes = reflections.getSubTypesOf(Process.class);
         subTypes.addAll(reflections.getSubTypesOf(DisposableProcess.class));
@@ -34,5 +37,9 @@ public class ProcessFactory {
     public Process getInstance(String alias) {
         Class<? extends Process> processClass = processesClass.get(alias);
         return processClass!=null ? instances.select(processClass).iterator().next() : null;
+    }
+
+    public static Integer getTimeout() {
+        return timeout;
     }
 }
