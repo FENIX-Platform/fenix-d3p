@@ -14,7 +14,7 @@ import javax.servlet.annotation.WebListener;
 import java.io.File;
 import java.util.Collections;
 
-@WebListener("")
+@WebListener
 public class Startup implements ServletContextListener, InitListener {
     private
     @Inject
