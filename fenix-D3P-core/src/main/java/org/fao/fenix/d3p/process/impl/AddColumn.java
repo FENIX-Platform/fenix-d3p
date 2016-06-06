@@ -8,6 +8,7 @@ import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
+import org.fao.fenix.d3p.process.dto.AddColumnMap;
 import org.fao.fenix.d3p.process.dto.AddColumnParams;
 import org.fao.fenix.d3p.process.dto.JoinParams;
 import org.fao.fenix.d3p.process.impl.join.JoinLogic;
@@ -22,12 +23,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-@ProcessName("addColumn")
+@ProcessName("addcolumn")
 public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams> {
 
     private static final Logger LOGGER = Logger.getLogger(AddColumn.class);
-    @Inject JoinLogicFactory logicFactory;
-    private @Inject StepFactory stepFactory;
+    @Inject
+    JoinLogicFactory logicFactory;
+    private
+    @Inject
+    StepFactory stepFactory;
 
 
     @Override
@@ -40,61 +44,59 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
         Object value = params.getValue();
 
-        // add label ??
-        Set<String> columnNames = new HashSet<>();
         // query
         StringBuilder query = new StringBuilder("SELECT ");
-        for(DSDColumn column: source.getCurrentDsd().getColumns())
+        for (DSDColumn column : source.getCurrentDsd().getColumns())
             query.append(column.getId() + ",");
 
-        if (value instanceof Map) {
+        if (value instanceof AddColumnMap) {
             // check the conditions
             query.append(" CASE ");
-            HashMap<Object,Object> valueMap = (HashMap<Object, Object>) value;
+            AddColumnMap valueMap = (AddColumnMap) value;
 
-            // for each value
-            for( Object key: valueMap.keySet())
-                if(key instanceof Map){
-                    // chack key.length == value.length
+            Object[] keys = valueMap.getKeys();
+
+            for (int i = 0; i < keys.length; i++) {
+
+                Object key = keys[i];
+
+                if (key instanceof AddColumnMap) {
+                    // second level
+                    AddColumnMap secondLevelMap = (AddColumnMap) key;
+                    Object[] keysSecondLevel = ((AddColumnMap) key).getKeys();
+
                     query.append("WHEN ");
-                    HashMap<Object, Object> keyMap = (HashMap<Object, Object>) key;
-                    // if key is empty or nulll, end with every value null
-                    if(keyMap.isEmpty() || keyMap == null){
-                        query.setLength(query.length()-5);
-                        query.append(" END ");
-                        break;
+                    for (int j = 0; j < keysSecondLevel.length; j++) {
+                        query.append(keysSecondLevel[j].toString());
+                        String valueToAppend = secondLevelMap.getValues()[j] == null ?
+                                " IS NULL" :
+                                " =" + secondLevelMap.getValues()[j].toString();
+                        query.append(valueToAppend);
                     }
-                    for(Object secondLevelKey : keyMap.keySet()) {
-                        // if key is not a string
-                        if (!(secondLevelKey instanceof String) )
-                            throw new BadRequestException("TODO: to move in validation");
-                        columnNames.add(secondLevelKey.toString());
+                } else if (key instanceof String) {
+                    query.append(key);
+                    String valueToAppend = valueMap.getValues()[i] == null ?
+                            " IS NULL" :
+                            " =" + valueMap.getValues()[i].toString();
+                    query.append(valueToAppend);
 
-                        DSDColumn column = source.getCurrentDsd().findColumn(secondLevelKey.toString());
-                        if(column == null)
-                            throw new BadRequestException("TODO: to move in validation");
-
-                        Object secondLevelValue = keyMap.get(secondLevelKey);
-                        query.append(" " + secondLevelKey );
-                        String valueToAppend = (secondLevelValue==null)? " IS NULL": " ="+secondLevelValue.toString();
-                        query.append(" AND");
-
-                    }
-                    // end CONDITION AND
-                    query.setLength(query.length()-4);
-                    query.append("THEN "+ valueMap.get(key).toString());
-                }else if(key instanceof String || key instanceof Integer || key instanceof Double || key instanceof Boolean)
-                    query.append(" ELSE "+ valueMap.get(key));
-                else if (key == null ){
+                } else if (key == null) {
                     query.append(" END ");
                     break;
+                } else {
+                    throw new BadRequestException("error key");
                 }
-        } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double)
+            }
+        } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             // direct values
-            query.append(params.getValue() + " AS "+params.getColumn().getId());
-        else{
+
+            String directValue = (value instanceof String) ? "\'"+value.toString()+"\'": value.toString();
+            query.append(directValue + " AS " + params.getColumn().getId());
+        }
+        else {
             throw new UnsupportedOperationException("datatype not supported for value parameter");
         }
+        query.append(" FROM "+ source.getData().toString());
 
         DSDDataset dsd = source.getDsd();
         dsd.getColumns().add(params.getColumn());
@@ -111,12 +113,12 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         initialValidation(sourceSteps);
         // TODO validate params with source
 
-       //column parameter validation
+        //column parameter validation
         Step source = sourceSteps[0];
-        for(DSDColumn column: source.getDsd().getColumns()) {
+        for (DSDColumn column : source.getDsd().getColumns()) {
             if (params.getColumn().getId().equals(column.getId()))
                 throw new BadRequestException("id equals");
-            if (params.getColumn().getSubject().equals(column.getSubject()))
+            if (params.getColumn().getSubject()!= null && column.getSubject()!= null && params.getColumn().getSubject().equals(column.getSubject()))
                 throw new BadRequestException("subject equals");
         }
     }
