@@ -18,10 +18,7 @@ import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @ProcessName("addcolumn")
 public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams> {
@@ -43,28 +40,28 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         //TODO check if column is addeable
 
         Object value = params.getValue();
-
+        StringBuilder query = new StringBuilder("");
         // query
-        StringBuilder query = new StringBuilder("SELECT ");
-        for (DSDColumn column : source.getCurrentDsd().getColumns())
-            query.append(column.getId() + ",");
 
+        query.append(" CASE ");
         if (value instanceof AddColumnMap) {
             // check the conditions
-            query.append(" CASE ");
             AddColumnMap valueMap = (AddColumnMap) value;
+            Object[] keysFirstLevel = valueMap.getKeys();
+            Object[] valuesFirstLevel = valueMap.getValues();
 
-            Object[] keys = valueMap.getKeys();
-
-            for (int i = 0; i < keys.length; i++) {
-
-                Object key = keys[i];
+            for (int i = 0; i < keysFirstLevel.length; i++) {
+                Object key = keysFirstLevel[i];
 
                 if (key instanceof AddColumnMap) {
                     // second level
                     AddColumnMap secondLevelMap = (AddColumnMap) key;
-                    Object[] keysSecondLevel = ((AddColumnMap) key).getKeys();
+                    if (secondLevelMap == null || secondLevelMap.getKeys().length > 0) {
+                        query.append(" ELSE NULL END");
+                        break;
+                    }
 
+                    Object[] keysSecondLevel = ((AddColumnMap) key).getKeys();
                     query.append("WHEN ");
                     for (int j = 0; j < keysSecondLevel.length; j++) {
                         query.append(keysSecondLevel[j].toString());
@@ -72,16 +69,17 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                                 " IS NULL" :
                                 " =" + secondLevelMap.getValues()[j].toString();
                         query.append(valueToAppend);
+                        query.append(" AND ");
                     }
+                    query.setLength(query.length() - 5);
+                    query.append("THEN " + valuesFirstLevel[i]);
                 } else if (key instanceof String) {
                     query.append(key);
-                    String valueToAppend = valueMap.getValues()[i] == null ?
-                            " IS NULL" :
-                            " =" + valueMap.getValues()[i].toString();
-                    query.append(valueToAppend);
+                    query.append(" THEN ");
+                    query.append(valueMap.getValues()[i]);
 
                 } else if (key == null) {
-                    query.append(" END ");
+                    query.append(" ELSE NULL END");
                     break;
                 } else {
                     throw new BadRequestException("error key");
@@ -90,16 +88,19 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             // direct values
 
-            String directValue = (value instanceof String) ? "\'"+value.toString()+"\'": value.toString();
-            query.append(directValue + " AS " + params.getColumn().getId());
-        }
-        else {
+            query.append(" ELSE ");
+            String directValue = (value instanceof String) ? "\'" + value.toString() + "\'" : value.toString();
+            query.append(directValue + " END");
+        } else {
             throw new UnsupportedOperationException("datatype not supported for value parameter");
         }
-        query.append(" FROM "+ source.getData().toString());
+
+        query.append(" AS "+ params.getColumn().getId());
 
         DSDDataset dsd = source.getDsd();
-        dsd.getColumns().add(params.getColumn());
+        Collection<DSDColumn> newColumns = dsd.getColumns();
+        newColumns.add(params.getColumn());
+        dsd.setColumns(newColumns);
         QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         dsd.setContextSystem("D3P");
@@ -108,18 +109,54 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         return step;
     }
 
+
     // Validation
     private void validate(AddColumnParams params, Step... sourceSteps) {
         initialValidation(sourceSteps);
-        // TODO validate params with source
+
+        if (params.getColumn() == null)
+            throw new BadRequestException("Column parameter not specified");
+        if (params.getValue() == null)
+            throw new BadRequestException("Value parameter not specified");
+
 
         //column parameter validation
         Step source = sourceSteps[0];
         for (DSDColumn column : source.getDsd().getColumns()) {
             if (params.getColumn().getId().equals(column.getId()))
                 throw new BadRequestException("id equals");
-            if (params.getColumn().getSubject()!= null && column.getSubject()!= null && params.getColumn().getSubject().equals(column.getSubject()))
+            if (params.getColumn().getSubject() != null && column.getSubject() != null && params.getColumn().getSubject().equals(column.getSubject()))
                 throw new BadRequestException("subject equals");
+        }
+        // TODO validate params with source
+
+        Object value = params.getValue();
+        if (value == null)
+            throw new BadRequestException("id equals");
+
+        if (value instanceof AddColumnMap) {
+            AddColumnMap firstParameters = (AddColumnMap) value;
+            if (firstParameters.getKeys().length != firstParameters.getValues().length)
+                throw new BadRequestException("Inside of value parameters, key parameters's number should follows value parameter's one");
+            for (Object keyParameter : firstParameters.getKeys()) {
+
+                if (keyParameter == null)
+                    throw new BadRequestException("key parameter should not be null");
+
+                if (keyParameter instanceof AddColumnMap) {
+                    AddColumnMap secondParameters = (AddColumnMap) keyParameter;
+                    for (Object secondKey : secondParameters.getKeys()) {
+                        if (secondKey != null) {
+                            if (!(secondKey instanceof String))
+                                throw new BadRequestException("second level key parameter can be only an id");
+                            if (source.getDsd().findColumn(secondKey.toString()) == null) {
+                                throw new BadRequestException("second level key parameter id is not in the resource specified");
+                            }
+                        }
+                    }
+                }
+
+            }
         }
     }
 
