@@ -1,5 +1,6 @@
 package org.fao.fenix.d3p.process.impl.join.logic;
 
+import org.apache.log4j.Logger;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCodeList;
@@ -18,14 +19,16 @@ import javax.ws.rs.BadRequestException;
 import java.util.*;
 
 public class ManualJoin implements JoinLogic {
-    private
-    @Inject
-    StepFactory stepFactory;
+    private @Inject StepFactory stepFactory;
+
+    private static final Logger LOGGER = Logger.getLogger(ManualJoin.class);
+
 
     @Override
     public Step process(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
 
         //Create column key DSD
+        LOGGER.debug("start join process");
         JoinParameter[][] joinParameters = params.getJoins();
         List<DSDColumn> keyColumns = new LinkedList<>();
         Set<String>[] joinColumnNames = new HashSet[joinParameters.length];
@@ -101,7 +104,6 @@ public class ManualJoin implements JoinLogic {
         step.setDsd(dsd);
         step.setData(createQuery(sourceStep, joinParameters, valueParameters, queryParameters, keyColumns));
 
-        System.out.println("create QUERY: ");
         step.setParams(queryParameters.toArray());
         step.setTypes(null);
         return step;
@@ -408,6 +410,7 @@ public class ManualJoin implements JoinLogic {
         testFilter(select);
 */
 
+        LOGGER.debug("QUERY : "+select.toString());
         return select.toString();
     }
 
