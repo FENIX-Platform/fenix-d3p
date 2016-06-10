@@ -163,7 +163,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // if key is null or empty, stop here
                     if (secondLevelMap == null || secondLevelMap.isEmpty()) {
-                        query.append(" ELSE NULL");
+                        query.append(valuesFirstLevel.get(i) == null? " ELSE NULL ":" ELSE "+ buildRightString(valuesFirstLevel.get(i)));
                         break;
                     }
 
