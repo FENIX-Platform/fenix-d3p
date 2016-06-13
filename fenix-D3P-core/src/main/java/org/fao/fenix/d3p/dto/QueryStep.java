@@ -31,6 +31,7 @@ public class QueryStep extends Step<String> {
         } catch (SQLException ex) {
             if( ex.getSQLState().equals("57014"))
                 throw new  NotAcceptableException();
+            throw new SQLException(ex);
         }
         return new DataIterator(rawData, null, null, null);
     }

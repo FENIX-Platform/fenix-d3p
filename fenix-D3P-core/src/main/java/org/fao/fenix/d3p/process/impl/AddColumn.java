@@ -143,7 +143,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
         for(int i=0; i< columns.size(); i++) {
             if(i!= columns.size()-1)
-                query.append( ((ArrayList<DSDColumn>) columns).get(i).getId() + ",");
+                query.append( ((List<DSDColumn>) columns).get(i).getId() + ",");
         }
         Object value = params.getValue();
         query.append(" CASE ");

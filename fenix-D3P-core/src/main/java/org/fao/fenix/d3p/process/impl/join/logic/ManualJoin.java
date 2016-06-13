@@ -68,8 +68,8 @@ public class ManualJoin implements JoinLogic {
                 for (int c = 0; c < dsdList[r].getColumns().size(); c++)
 
                     // if it is not a key column
-                    if (!joinColumnNames[r].contains((((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c)).getId())) {
-                        DSDColumn column = ((ArrayList<DSDColumn>) dsdList[r].getColumns()).get(c);
+                    if (!joinColumnNames[r].contains((((List<DSDColumn>) dsdList[r].getColumns()).get(c)).getId())) {
+                        DSDColumn column = ((List<DSDColumn>) dsdList[r].getColumns()).get(c);
                         // when a user does not specify anything, take all the columns in the dataset
                         if (valueParameters[r] == null) {
                             int sizeColumnDataset = dsdList[r].getColumns().size() - joinColumnNames[r].size();
@@ -369,6 +369,10 @@ public class ManualJoin implements JoinLogic {
                 if (valueParameters[r][c] != null)
                     select.append(tablesName[r] + '.' + valueParameters[r][c]).append(',');
         select.setLength(select.length() - 1);
+
+        Object[] existingParamsInit = ((QueryStep) steps[0]).getParams();
+        if (existingParamsInit != null && existingParamsInit.length > 0)
+            parameters.addAll(Arrays.asList(existingParamsInit));
 
         //create join
         select.append(" FROM ").append(steps[0].getType() == StepType.table ? (String) steps[0].getData() : '(' + (String) steps[0].getData() + ") as " + steps[0].getRid().getId());
