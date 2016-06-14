@@ -113,11 +113,15 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                     }
                 }
                 //check value type equal to the column datatype to be added
+/*
                 validateValueOnDatatype(values.get(i), columnDatatype);
+*/
             }
         } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             //check value type equal to the column datatype to be added
+/*
             validateValueOnDatatype(value, columnDatatype);
+*/
 
         } else
             throw new BadRequestException("value can be a map, a string an integer or a boolean");
@@ -163,7 +167,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // if key is null or empty, stop here
                     if (secondLevelMap == null || secondLevelMap.isEmpty()) {
-                        query.append(valuesFirstLevel.get(i) == null? " ELSE NULL ":" ELSE "+ buildRightString(valuesFirstLevel.get(i)));
+                        query.append(valuesFirstLevel.get(i) == null? " ELSE NULL ":" ELSE "+ buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType()));
                         break;
                     }
 
@@ -176,7 +180,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                         String valueFormatted = null;
                         if (valuesSecondLevel.get(j) != null)
-                            valueFormatted = buildRightString(valuesSecondLevel.get(j));
+                            valueFormatted = buildRightString(valuesSecondLevel.get(j),params.getColumn().getDataType());
                         String valueToAppend = valuesSecondLevel.get(j) == null ?
                                 " IS NULL " :
                                 " =" + valueFormatted;
@@ -186,13 +190,13 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // remove AND statement and add value
                     query.setLength(query.length() - 4);
-                    String directValue = buildRightString(valuesFirstLevel.get(i));
+                    String directValue = buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType());
                     query.append("THEN " + directValue);
 
                 } else if (key instanceof String) {
                     query.append(" WHEN " + key);
                     query.append(" THEN ");
-                    String directValue = buildRightString(valuesFirstLevel.get(i));
+                    String directValue = buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType());
                     query.append(directValue);
 
                 } else if (key == null) {
@@ -206,7 +210,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             // direct values
             query.append("WHEN 1=1 THEN ");
-            String directValue = buildRightString(value);
+            String directValue = buildRightString(value,params.getColumn().getDataType());
             query.append(directValue + " END");
         } else {
             throw new UnsupportedOperationException("datatype not supported for value parameter");
@@ -218,8 +222,8 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     }
 
     // Utils
-    private String buildRightString(Object value) {
-        return (value instanceof String) ? "\'" + value.toString() + "\'" : value.toString();
+    private String buildRightString(Object value, DataType columnDatatype) {
+        return (value instanceof String && (columnDatatype == DataType.code ||  columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ? "\'" + value.toString() + "\'" : value.toString();
     }
 
     private void validateValueOnDatatype(Object value, DataType columnDatatype) {

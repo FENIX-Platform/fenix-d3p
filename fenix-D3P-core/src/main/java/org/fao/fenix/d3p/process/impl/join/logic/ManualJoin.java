@@ -367,7 +367,8 @@ public class ManualJoin implements JoinLogic {
         for (int r = 0; r < valueParameters.length; r++)
             for (int c = 0; c < valueParameters[r].length; c++)
                 if (valueParameters[r][c] != null)
-                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(',');
+                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(" AS ").append(updateId(valueParameters[r][c],tablesName[r])).append(',');
+
         select.setLength(select.length() - 1);
 
         Object[] existingParamsInit = ((QueryStep) steps[0]).getParams();
@@ -429,6 +430,10 @@ public class ManualJoin implements JoinLogic {
         DSDColumn result = column.clone();
         result.setId(prefix + "_" + column.getId());
         return result;
+    }
+
+    private String updateId(String originalID, String prefix) {
+        return prefix + "_"+ originalID;
     }
 
     //Create the collection of DSD columns that are sepcified into the join parameters
