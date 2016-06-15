@@ -96,7 +96,7 @@ public class Processes {
         if (results!=null)
             for (Map.Entry<StepId, Resource<DSDDataset,Object[]>> result : results.entrySet()) {
                 Collection<Object[]> data = result.getValue().getData();
-                org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD metadataProxy = ResponseBeanFactory.getInstance(org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.DSD.class, result.getValue().getMetadata());
+                org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD metadataProxy = ResponseBeanFactory.getInstance(org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD.class, result.getValue().getMetadata());
                 response.put(result.getKey(), new ResourceProxy( metadataProxy, data, null, null, (long) data.size(), parameters.getLimit()));
             }
 
