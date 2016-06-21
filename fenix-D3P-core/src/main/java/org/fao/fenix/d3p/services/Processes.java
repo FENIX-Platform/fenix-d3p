@@ -64,11 +64,18 @@ public class Processes {
         else
             return resourcesService.getResourceByUID(uid,version,false,true,true,false);
 
-        //Apply flow
-        Map<StepId, ResourceProxy> results = apply(flow, managerList);
+        //TODO: Check this
+     /*   Map<StepId, ResourceProxy> results = (Map<StepId, ResourceProxy>)apply(flow, managerList);
         if (results.size()>1)
             throw new BadRequestException("This entry point is only for single chain flow.");
-        return results.size()>0 ? results.values().iterator().next() : null;
+        return results.size()>0 ? results.values().iterator().next() : null;*/
+
+        //Apply flow
+        Object results = apply(flow, managerList);
+        // if the flow produces more than one result
+        if(!(results instanceof ResourceProxy))
+            throw new BadRequestException("This entry point is only for single chain flow.");
+        return (ResourceProxy)results;
     }
 
     /**
@@ -80,7 +87,7 @@ public class Processes {
      * @throws Exception
      */
 
-    @POST
+   /* @POST
     public Map<StepId, ResourceProxy> apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
 
         //Retrieve alternative managers name list
@@ -101,6 +108,31 @@ public class Processes {
             }
 
         return response;
+    }*/
+
+
+    @POST
+    public Object apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
+
+        //Retrieve alternative managers name list
+        String[] managersName = managerList!=null ? managerList.split(",") : new String[0];
+        for (int i=0; i<managersName.length; i++)
+            managersName[i] = managersName[i].trim();
+
+        //Apply flow
+        Map<StepId, Resource<DSDDataset,Object[]>> results = flowManager.process(flow,managersName);
+
+        //Build response
+        Map<StepId, ResourceProxy> response = new HashMap<>();
+        if (results!=null)
+            for (Map.Entry<StepId, Resource<DSDDataset, Object[]>> result : results.entrySet()) {
+                Collection<Object[]> data = result.getValue().getData();
+                org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD metadataProxy = ResponseBeanFactory.getInstance(org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD.class, result.getValue().getMetadata());
+                response.put(result.getKey(), new ResourceProxy(metadataProxy, data, null, null, (long) data.size(), parameters.getLimit()));
+            }
+        //TODO: Check this
+        return (response.size()==1) ?   response.values().iterator().next():  response;
     }
+
 
 }
