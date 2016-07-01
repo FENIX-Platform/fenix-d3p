@@ -86,31 +86,6 @@ public class Processes {
      * @return Processed data
      * @throws Exception
      */
-
-   /* @POST
-    public Map<StepId, ResourceProxy> apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
-
-        //Retrieve alternative managers name list
-        String[] managersName = managerList!=null ? managerList.split(",") : new String[0];
-        for (int i=0; i<managersName.length; i++)
-            managersName[i] = managersName[i].trim();
-
-        //Apply flow
-        Map<StepId, Resource<DSDDataset,Object[]>> results = flowManager.process(flow,managersName);
-
-        //Build response
-        Map<StepId, ResourceProxy> response = new HashMap<>();
-        if (results!=null)
-            for (Map.Entry<StepId, Resource<DSDDataset,Object[]>> result : results.entrySet()) {
-                Collection<Object[]> data = result.getValue().getData();
-                org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD metadataProxy = ResponseBeanFactory.getInstance(org.fao.fenix.commons.msd.dto.templates.standard.combined.dataset.MetadataDSD.class, result.getValue().getMetadata());
-                response.put(result.getKey(), new ResourceProxy( metadataProxy, data, null, null, (long) data.size(), parameters.getLimit()));
-            }
-
-        return response;
-    }*/
-
-
     @POST
     public Object apply(Process[] flow, @QueryParam("logic") String managerList) throws Exception {
 
