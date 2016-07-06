@@ -32,7 +32,7 @@ public class TableStep extends Step<String> {
             statement.setQueryTimeout(ProcessFactory.getTimeout());
         ResultSet rawData = null;
         try {
-            statement.executeQuery(getQuery());
+            rawData = statement.executeQuery(getQuery());
         } catch (SQLException ex) {
             if (ex.getSQLState().equals("57014"))
                 throw new NotAcceptableException();
