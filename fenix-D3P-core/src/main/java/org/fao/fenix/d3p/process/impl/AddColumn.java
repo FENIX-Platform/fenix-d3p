@@ -1,26 +1,25 @@
 package org.fao.fenix.d3p.process.impl;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.log4j.Logger;
-import org.fao.fenix.commons.msd.dto.full.DSDColumn;
-import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.msd.dto.data.Resource;
+import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
+import org.fao.fenix.commons.msd.dto.full.*;
+import org.fao.fenix.commons.msd.dto.templates.codeList.*;
+import org.fao.fenix.commons.msd.dto.templates.codeList.Code;
 import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
-import org.fao.fenix.d3p.process.dto.AddColumnMap;
 import org.fao.fenix.d3p.process.dto.AddColumnParams;
-import org.fao.fenix.d3p.process.dto.JoinParams;
-import org.fao.fenix.d3p.process.impl.join.JoinLogic;
-import org.fao.fenix.d3p.process.impl.join.JoinLogicFactory;
 import org.fao.fenix.d3p.process.type.ProcessName;
-import org.fao.fenix.d3s.cache.dto.dataset.Table;
 import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
+import org.fao.fenix.d3s.msd.services.spi.Resources;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
-import javax.xml.crypto.Data;
 import java.util.*;
 
 @ProcessName("addcolumn")
@@ -30,6 +29,12 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     private
     @Inject
     StepFactory stepFactory;
+    // to inject d3s services
+    private
+    @Inject
+    Resources resource;
+    Language[] languages;
+
 
     @Override
     public Step process(AddColumnParams params, Step... sourceStep) throws Exception {
@@ -44,13 +49,27 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         DSDDataset dsd = source.getDsd();
         dsd.getColumns().add(params.getColumn());
 
+        Map<String, Map<String, String>> labelCodes = new HashMap<>();
+
+
+        //Add label with languages
+        if (params.getColumn().getDataType() == DataType.code || params.getColumn().getDataType() == DataType.customCode) {
+            languages = DatabaseStandards.getLanguageInfo();
+            if (languages != null && languages.length > 0) {
+                addLanguageColumnsToDSD(languages, dsd, params.getColumn());
+                ResourceProxy codeList = getCodelist(params.getColumn());
+                ArrayList<org.fao.fenix.commons.msd.dto.templates.codeList.Code> codes = ((ArrayList<org.fao.fenix.commons.msd.dto.templates.codeList.Code>) codeList.getData());
+                codesMap(codes, labelCodes);
+            }
+        }
+
         //Generate and return query step
         QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         dsd.setContextSystem("D3P");
-        step.setData(buildQuery(params, tableName, source.getDsd().getColumns()));
-        step.setTypes(type==StepType.query ? ((QueryStep)source).getTypes() : null);
-        step.setParams(type==StepType.query ? ((QueryStep)source).getParams() : null);
+        step.setData(buildQuery(params, tableName, source.getDsd().getColumns(), labelCodes));
+        step.setTypes(type == StepType.query ? ((QueryStep) source).getTypes() : null);
+        step.setParams(type == StepType.query ? ((QueryStep) source).getParams() : null);
         return step;
     }
 
@@ -140,14 +159,15 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     }
 
     // Logic
-    private String buildQuery(AddColumnParams params, String tableName, Collection<DSDColumn> columns ) {
+    private String buildQuery(AddColumnParams params, String tableName, Collection<DSDColumn> columns, Map<String, Map<String, String>> codesMap) {
 
 
+        ArrayList<String> valuesList = new ArrayList<>();
         StringBuilder query = new StringBuilder("SELECT ");
 
-        for(int i=0; i< columns.size(); i++) {
-            if(i!= columns.size()-1)
-                query.append( ((List<DSDColumn>) columns).get(i).getId() + ",");
+        for (int i = 0; i < columns.size(); i++) {
+            if (i != columns.size() - 1)
+                query.append(((List<DSDColumn>) columns).get(i).getId() + ",");
         }
         Object value = params.getValue();
         query.append(" CASE ");
@@ -167,7 +187,9 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // if key is null or empty, stop here
                     if (secondLevelMap == null || secondLevelMap.isEmpty()) {
-                        query.append(valuesFirstLevel.get(i) == null? " ELSE NULL ":" ELSE "+ buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType()));
+                        query.append(valuesFirstLevel.get(i) == null ? " ELSE NULL " : " ELSE " + buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType()));
+                        // to create the label map
+                        valuesList.add(valuesFirstLevel.get(i).toString());
                         break;
                     }
 
@@ -180,23 +202,35 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                         String valueFormatted = null;
                         if (valuesSecondLevel.get(j) != null)
-                            valueFormatted = buildRightString(valuesSecondLevel.get(j),params.getColumn().getDataType());
+                            valueFormatted = buildRightString(valuesSecondLevel.get(j), params.getColumn().getDataType());
                         String valueToAppend = valuesSecondLevel.get(j) == null ?
                                 " IS NULL " :
                                 " =" + valueFormatted;
+
+                        // to create the label map
+                        if (valuesSecondLevel.get(j) == null)
+                            valuesList.add(valuesSecondLevel.get(j).toString());
+
                         query.append(valueToAppend);
                         query.append(" AND ");
                     }
 
                     // remove AND statement and add value
                     query.setLength(query.length() - 4);
-                    String directValue = buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType());
+                    String directValue = buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType());
+                    // to create the label map
+                    valuesList.add(valuesFirstLevel.get(i).toString());
+
                     query.append("THEN " + directValue);
 
                 } else if (key instanceof String) {
                     query.append(" WHEN " + key);
                     query.append(" THEN ");
-                    String directValue = buildRightString(valuesFirstLevel.get(i),params.getColumn().getDataType());
+                    String directValue = buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType());
+
+                    // to create the label map
+                    valuesList.add(valuesFirstLevel.get(i).toString());
+
                     query.append(directValue);
 
                 } else if (key == null) {
@@ -210,20 +244,46 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             // direct values
             query.append("WHEN 1=1 THEN ");
-            String directValue = buildRightString(value,params.getColumn().getDataType());
+            String directValue = buildRightString(value, params.getColumn().getDataType());
+
+            // to create the label map
+            valuesList.add(value.toString());
+
             query.append(directValue + " END");
         } else {
             throw new UnsupportedOperationException("datatype not supported for value parameter");
         }
         query.append(" AS " + params.getColumn().getId());
+        if (codesMap != null && codesMap.size() > 0)
+            addLabelQuery(valuesList, codesMap, query, params.getColumn().getId());
 
-        query.append(" FROM "+ tableName+ " ");
+        query.append(" FROM " + tableName + " ");
         return query.toString();
+    }
+
+
+    private void addLabelQuery(ArrayList<String> valuesList, Map<String, Map<String, String>> codesMap, StringBuilder query, String columnId) {
+
+        String querySlice = query.substring(query.indexOf("CASE") - 1);
+
+        for (Language language : languages) {
+            query.append(", ");
+
+            String labelCaseQuery = new String(querySlice);
+            for (String value : valuesList) {
+                Map<String, String> label = codesMap.get(value);
+                if (label != null)
+                    labelCaseQuery = labelCaseQuery.replace(value, label.get(language.getCode()));
+
+            }
+            labelCaseQuery = labelCaseQuery.replace(columnId, columnId + "_" + language.getCode());
+            query.append(labelCaseQuery);
+        }
     }
 
     // Utils
     private String buildRightString(Object value, DataType columnDatatype) {
-        return (value instanceof String && (columnDatatype == DataType.code ||  columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ? "\'" + value.toString() + "\'" : value.toString();
+        return (value instanceof String && (columnDatatype == DataType.code || columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ? "\'" + value.toString() + "\'" : value.toString();
     }
 
     private void validateValueOnDatatype(Object value, DataType columnDatatype) {
@@ -254,6 +314,46 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                 break;
         }
     }
+
+    private void addLanguageColumnsToDSD(Language[] languages, DSDDataset dsd, DSDColumn codeColumn) {
+
+        for (Language language : languages) {
+            if (dsd.findColumn(codeColumn.getId() + '_' + language.getCode()) == null) {
+                DSDColumn column = codeColumn.clone();
+                column.setId(codeColumn.getId() + '_' + language.getCode());
+                column.setKey(false);
+            }
+
+        }
+    }
+
+
+    private ResourceProxy getCodelist(DSDColumn column) {
+
+        try {
+            return (column.getDataType() == DataType.customCode) ?
+                    null :
+                    resource.getResourceByUID
+                            (column.getDomain().getCodes().iterator().next().getIdCodeList(),
+                                    column.getDomain().getCodes().iterator().next().getVersion(), true, false, false, false);
+        } catch (Exception ex) {
+            throw new BadRequestException("this codelist: " + column.getDomain().getCodes().iterator().next().getIdCodeList() +
+                    " cannot be found on the environment");
+        }
+    }
+
+
+    // recursive function to create codes-label map
+    private Map<String, Map<String, String>> codesMap(Collection<Code> codes, Map<String, Map<String, String>> labels) {
+        if (codes != null)
+            for (Code code : codes) {
+                codesMap(code.getChildren(), labels);
+                labels.put(code.getCode(), code.getTitle());
+            }
+        return labels;
+    }
+
+
 }
 
 
