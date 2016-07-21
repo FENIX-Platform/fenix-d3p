@@ -165,10 +165,10 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         ArrayList<String> valuesList = new ArrayList<>();
         StringBuilder query = new StringBuilder("SELECT ");
 
-        for (int i = 0; i < columns.size(); i++) {
-            if (i != columns.size() - 1)
-                query.append(((List<DSDColumn>) columns).get(i).getId() + ",");
-        }
+        int offset = (languages == null || languages.length == 0) ? 1 : languages.length + 1;
+        for (int i = 0; i < columns.size() - offset; i++)
+            query.append(((List<DSDColumn>) columns).get(i).getId() + ",");
+
         Object value = params.getValue();
         query.append(" CASE ");
 
@@ -322,6 +322,8 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                 DSDColumn column = codeColumn.clone();
                 column.setId(codeColumn.getId() + '_' + language.getCode());
                 column.setKey(false);
+                column.setSubject(null);
+                dsd.getColumns().add(column);
             }
 
         }
