@@ -1,11 +1,11 @@
 package org.fao.fenix.d3p.process.impl;
 
 import org.apache.log4j.Logger;
-import org.fao.fenix.commons.msd.dto.data.Resource;
 import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
-import org.fao.fenix.commons.msd.dto.full.*;
-import org.fao.fenix.commons.msd.dto.templates.codeList.*;
-import org.fao.fenix.commons.msd.dto.templates.codeList.Code;
+import org.fao.fenix.commons.msd.dto.full.DSDColumn;
+import org.fao.fenix.commons.msd.dto.full.DSDDataset;
+import org.fao.fenix.commons.msd.dto.full.OjCode;
+import org.fao.fenix.commons.msd.dto.full.Code;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.d3p.dto.QueryStep;
@@ -26,13 +26,9 @@ import java.util.*;
 public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams> {
 
     private static final Logger LOGGER = Logger.getLogger(AddColumn.class);
-    private
-    @Inject
-    StepFactory stepFactory;
+    private @Inject StepFactory stepFactory;
     // to inject d3s services
-    private
-    @Inject
-    Resources resource;
+    private @Inject Resources resource;
     Language[] languages;
 
 
@@ -57,8 +53,11 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
             languages = DatabaseStandards.getLanguageInfo();
             if (languages != null && languages.length > 0) {
                 addLanguageColumnsToDSD(languages, dsd, params.getColumn());
-                ResourceProxy codeList = getCodelist(params.getColumn());
-                ArrayList<org.fao.fenix.commons.msd.dto.templates.codeList.Code> codes = ((ArrayList<org.fao.fenix.commons.msd.dto.templates.codeList.Code>) codeList.getData());
+                // get the codes
+                ArrayList<Code> codes = (params.getColumn().getDataType() == DataType.customCode) ?
+                        trasformToCode((ArrayList<OjCode>) params.getColumn().getDomain().getCodes().iterator().next().getCodes()) :
+                        (ArrayList<Code>) (getCodelist(params.getColumn())).getData();
+                // create the map of labels
                 codesMap(codes, labelCodes);
             }
         }
@@ -286,6 +285,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         return (value instanceof String && (columnDatatype == DataType.code || columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ? "\'" + value.toString() + "\'" : value.toString();
     }
 
+    // no, beacause there could be an expression(string) to generate an integer
     private void validateValueOnDatatype(Object value, DataType columnDatatype) {
         switch (columnDatatype) {
             case code:
@@ -333,11 +333,9 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     private ResourceProxy getCodelist(DSDColumn column) {
 
         try {
-            return (column.getDataType() == DataType.customCode) ?
-                    null :
-                    resource.getResourceByUID
-                            (column.getDomain().getCodes().iterator().next().getIdCodeList(),
-                                    column.getDomain().getCodes().iterator().next().getVersion(), true, false, false, false);
+            return resource.getResourceByUID
+                    (column.getDomain().getCodes().iterator().next().getIdCodeList(),
+                            column.getDomain().getCodes().iterator().next().getVersion(), true, false, false, false);
         } catch (Exception ex) {
             throw new BadRequestException("this codelist: " + column.getDomain().getCodes().iterator().next().getIdCodeList() +
                     " cannot be found on the environment");
@@ -355,6 +353,13 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         return labels;
     }
 
+
+    private ArrayList<Code> trasformToCode(ArrayList<OjCode> codes) {
+        ArrayList<Code> result = new ArrayList<>();
+        for (OjCode customCode : codes)
+            result.add(new Code(customCode.getCode(), customCode.getLabel()));
+        return result;
+    }
 
 }
 
