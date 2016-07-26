@@ -5,7 +5,7 @@ import org.fao.fenix.commons.msd.dto.data.ResourceProxy;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCode;
-import org.fao.fenix.commons.msd.dto.full.Code;
+import org.fao.fenix.commons.msd.dto.templates.codeList.Code;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.d3p.dto.QueryStep;
