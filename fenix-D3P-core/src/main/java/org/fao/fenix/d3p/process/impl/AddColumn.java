@@ -323,6 +323,8 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                 column.setId(codeColumn.getId() + '_' + language.getCode());
                 column.setKey(false);
                 column.setSubject(null);
+                column.setDomain(null);
+                column.setDataType(DataType.text);
                 dsd.getColumns().add(column);
             }
 
