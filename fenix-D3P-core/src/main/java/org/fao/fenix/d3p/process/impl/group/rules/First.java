@@ -19,7 +19,7 @@ public class First extends Rule {
 
     @Override
     public int getType(int[] ints) throws SQLException {
-        return java.sql.Types.DOUBLE;
+        return ints[ints.length-1];
     }
 
     @Override

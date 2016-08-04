@@ -67,11 +67,11 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         Collection<String> columnsName = filter.getColumns();
         if (columnsName!=null && columnsName.size()>0) {
             Collection<DSDColumn> columns = new LinkedList<>();
-            for (DSDColumn column : dsd.getColumns())
-                if (columnsName.contains(column.getId()))
-                    columns.add(column);
+           for(String columnName: columnsName)
+                if(dsd.findColumn(columnName)!= null)
+                    columns.add(dsd.findColumn(columnName));
                 else
-                    removeKey |= column.getKey()!=null && column.getKey();
+                    removeKey |= dsd.findColumn(columnName).getKey()!=null && dsd.findColumn(columnName).getKey();
             if (removeKey)
                 for (DSDColumn column : columns)
                     column.setKey(false);
