@@ -45,7 +45,7 @@ public class Group extends DisposableProcess<GroupParams> {
         String sourceData = (String)source.getData();
         sourceData = type==StepType.table ? sourceData : '('+sourceData+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
-        Set<String> groupsKey = new HashSet<>(Arrays.asList(params.getBy()));
+        Set<String> groupsKey = new LinkedHashSet<>(Arrays.asList(params.getBy()));
         //check for H2 availability
         boolean useDefaultStorage = source.getStorage() instanceof DefaultStorage;
         pid = useDefaultStorage ? uidUtils.getId() : null;
