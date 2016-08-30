@@ -36,6 +36,7 @@ public class TableStep extends Step<String> {
         } catch (SQLException ex) {
             if (ex.getSQLState().equals("57014"))
                 throw new NotAcceptableException();
+            throw ex;
         }
         return new DataIterator(rawData, connection, null, null);
     }
