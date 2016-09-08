@@ -5,6 +5,7 @@ import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
@@ -13,23 +14,29 @@ import org.fao.fenix.d3p.process.dto.JoinParameter;
 import org.fao.fenix.d3p.process.dto.JoinParams;
 import org.fao.fenix.d3p.process.dto.JoinValueTypes;
 import org.fao.fenix.d3p.process.impl.join.JoinLogic;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import java.util.*;
 
 public class ManualJoin implements JoinLogic {
-    private @Inject StepFactory stepFactory;
+    private
+    @Inject
+    StepFactory stepFactory;
+    Language[] languages;
 
     private static final Logger LOGGER = Logger.getLogger(ManualJoin.class);
-
 
     @Override
     public Step process(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
 
+
+        languages = DatabaseStandards.getLanguageInfo();
         //Create column key DSD
         LOGGER.debug("start join process");
-        JoinParameter[][] joinParameters = params.getJoins();
+        JoinParameter[][] joinParameters = addLabelColumnToParameters(languages, params.getJoins(), dsdList);
+
         List<DSDColumn> keyColumns = new LinkedList<>();
         Set<String>[] joinColumnNames = new HashSet[joinParameters.length];
         for (int c = 0; c < joinParameters[0].length; c++) {
@@ -124,6 +131,7 @@ public class ManualJoin implements JoinLogic {
      */
     @Override
     public void validate(Step[] sourceStep, DSDDataset[] dsdList, JoinParams params) throws Exception {
+
         JoinParameter[][] joinParameters = params.getJoins();
         String[][] valueParameters = params.getValues();
 
@@ -232,7 +240,7 @@ public class ManualJoin implements JoinLogic {
 
     private void checkDomain(DSDColumn column1, DSDColumn column2) throws Exception {
         if (column1.getDataType() != column2.getDataType())
-            throw new BadRequestException("Please check that the subject of column "+ column1.getId()+" is compatible with column "+column2.getId());
+            throw new BadRequestException("Please check that the subject of column " + column1.getId() + " is compatible with column " + column2.getId());
         if (column1.getDataType() == DataType.code) {
             OjCodeList domain1 = column1.getDomain().getCodes().iterator().next();
             OjCodeList domain2 = column2.getDomain().getCodes().iterator().next();
@@ -367,7 +375,7 @@ public class ManualJoin implements JoinLogic {
         for (int r = 0; r < valueParameters.length; r++)
             for (int c = 0; c < valueParameters[r].length; c++)
                 if (valueParameters[r][c] != null)
-                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(" AS ").append(updateId(valueParameters[r][c],tablesName[r])).append(',');
+                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(" AS ").append(updateId(valueParameters[r][c], tablesName[r])).append(',');
 
         select.setLength(select.length() - 1);
 
@@ -415,7 +423,7 @@ public class ManualJoin implements JoinLogic {
         testFilter(select);
 */
 
-        LOGGER.debug("QUERY : "+select.toString());
+        LOGGER.debug("QUERY : " + select.toString());
         return select.toString();
     }
 
@@ -433,7 +441,7 @@ public class ManualJoin implements JoinLogic {
     }
 
     private String updateId(String originalID, String prefix) {
-        return prefix + "_"+ originalID;
+        return prefix + "_" + originalID;
     }
 
     //Create the collection of DSD columns that are sepcified into the join parameters
@@ -459,6 +467,50 @@ public class ManualJoin implements JoinLogic {
             if (keysName.contains(column.getId()))
                 valueColumns.add(column);
         return valueColumns;
+    }
+
+    // Add label column of each couple of code columns
+    private JoinParameter[][] addLabelColumnToParameters(Language[] languages, JoinParameter[][] parameters, DSDDataset[] dsdList) {
+        // result matrix of join parameters
+        ArrayList<ArrayList<JoinParameter>> result = trasformArrayToList(parameters);
+        for (int j = 0; j < parameters[0].length; j++) {
+            //check if exists column to be added
+            if (parameters[0][j].getType() == JoinValueTypes.id &&
+                    (dsdList[0].findColumn(parameters[0][j].getValue().toString())).getDataType() == DataType.code) {
+                for (Language language : languages)
+                    if (language.getCode() != null) {
+                        for (int i = 0; i < parameters.length; i++) {
+                            JoinParameter joinParameterlabel = new JoinParameter();
+                            joinParameterlabel.setType(JoinValueTypes.id);
+                            joinParameterlabel.setValue(parameters[0][j].getValue().toString() + '_' + language.getCode());
+                            result.get(i).add(joinParameterlabel);
+                        }
+                    }
+            }
+        }
+        return trasformListToArray(result);
+    }
+
+    // util to trasform Array to ArrayList
+    private ArrayList<ArrayList<JoinParameter>> trasformArrayToList(JoinParameter[][] source) {
+        ArrayList<ArrayList<JoinParameter>> result = new ArrayList<ArrayList<JoinParameter>>();
+        for (int i = 0; i < source.length; i++) {
+            ArrayList<JoinParameter> temp = new ArrayList<>();
+            for (int j = 0; j < source[i].length; j++)
+                temp.add(source[i][j]);
+            result.add(temp);
+
+        }
+        return result;
+    }
+
+    // util to trasform ArrayList to Array
+    private JoinParameter[][] trasformListToArray(ArrayList<ArrayList<JoinParameter>> temp) {
+        JoinParameter[][] result = new JoinParameter[temp.size()][temp.get(0).size()];
+        for (int k = 0; k < temp.size(); k++)
+            for (int l = 0; l < temp.get(k).size(); l++)
+                result[k][l] = temp.get(k).get(l);
+        return result;
     }
 
 
