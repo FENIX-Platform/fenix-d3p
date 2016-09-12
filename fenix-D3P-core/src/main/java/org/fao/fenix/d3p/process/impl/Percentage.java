@@ -4,18 +4,14 @@ package org.fao.fenix.d3p.process.impl;
 import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
-import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
-import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.database.DatabaseUtils;
 import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
 import org.fao.fenix.d3p.dto.StepType;
 import org.fao.fenix.d3p.process.type.ProcessName;
-import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
-import org.fao.fenix.d3s.cache.dto.dataset.Type;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
 import javax.inject.Inject;
@@ -83,7 +79,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 totalsFilter.setColumns(columns);
 
                 Collection<Object> queryParameters = new LinkedList<>();
-                String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, null, dsd.getColumns());
+                String query = createCacheFilterQuery(null, totalsFilter, new Table(tableName, dsd), queryParameters, null, dsd.getColumns(), null);
                 ResultSet totalsRawData = databaseUtils.fillStatement(connection.prepareStatement(query), null, queryParameters.toArray()).executeQuery();
 
                 //Update table
@@ -113,7 +109,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 //Prepare query
                 Collection<Object> queryParameters = existingParams != null && existingParams.length > 0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
                 Collection<Integer> queryTypes = existingTypes != null && existingTypes.length > 0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
-                String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
+                String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns(), null);
                 //Restore value column id
                 valueColumn.setId(valueColumnId);
                 //Create and return query step

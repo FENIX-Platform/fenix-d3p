@@ -27,12 +27,21 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
 
     @Override
     public Step process(DataFilter params, Step... sourceStep) throws Exception {
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>=1 ? sourceStep.length==1? sourceStep[0] : sourceStep[sourceStep.length-1]: null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("filter process can be applied only on a table or an other select query");
         String tableName = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
+        // add other sources for dynamic filter
+        Collection<Step> otherSources = null;
+        if(sourceStep.length>1) {
+            otherSources = new ArrayList<>();
+            for (int i=0; i<sourceStep.length; i++)
+                otherSources.add(sourceStep[i]);
+
+        }
+
         //Add label columns if needed
         Collection<String> columnsName = params.getColumns();
         Language[] languages = DatabaseStandards.getLanguageInfo();
@@ -50,7 +59,7 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         Integer[] existingTypes = type==StepType.query ? ((QueryStep)source).getTypes() : null;
         Collection<Integer> queryTypes = existingTypes!=null && existingTypes.length>0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
 
-        String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns());
+        String query = createCacheFilterQuery(null, params, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns(), otherSources);
         //Update dsd
         updateDsd(dsd, params);
         //Generate and return query step
@@ -61,6 +70,8 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
         step.setTypes(queryTypes!=null && queryTypes.size()>0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
         return step;
     }
+
+
 
     private void updateDsd (DSDDataset dsd, DataFilter filter) {
         boolean removeKey = false;

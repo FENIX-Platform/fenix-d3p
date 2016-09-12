@@ -1,41 +1,44 @@
 package org.fao.fenix.d3p.process;
 
 
-
 import org.fao.fenix.commons.find.dto.filter.*;
 import org.fao.fenix.commons.msd.dto.full.DSDColumn;
+import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.UIDUtils;
+import org.fao.fenix.d3p.dto.IteratorStep;
+import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
-import org.fao.fenix.d3p.flow.Flow;
+import org.fao.fenix.d3p.dto.StepType;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
-import org.fao.fenix.d3s.cache.storage.dataset.DatasetStorage;
 
 import javax.inject.Inject;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.sql.Connection;
 import java.util.*;
 
-public abstract class Process <T> {
-    @Inject UIDUtils uidUtils;
+public abstract class Process<T> {
+    @Inject
+    UIDUtils uidUtils;
 
     /**
      * Get the expected external parameters Java type. This method is used to parse JSON payload.
+     *
      * @return Parameters Java type
      */
     public Type getParametersType() {
         Type genericSuperClass = this.getClass().getGenericSuperclass();
-        return genericSuperClass!=null && genericSuperClass instanceof ParameterizedType ? ((ParameterizedType)genericSuperClass).getActualTypeArguments()[0] : null;
+        return genericSuperClass != null && genericSuperClass instanceof ParameterizedType ? ((ParameterizedType) genericSuperClass).getActualTypeArguments()[0] : null;
     }
 
     /**
      * Execute the process. It's a synchronous activity.
+     *
      * @param sourceStep previous step
-     * @param params Current process external parameters.
+     * @param params     Current process external parameters.
      * @return
      */
     public abstract Step process(T params, Step[] sourceStep) throws Exception;
@@ -43,39 +46,39 @@ public abstract class Process <T> {
 
     //UTILS
     protected String getRandomTmpTableName() {
-        return "TMP_"+uidUtils.newId();
+        return "TMP_" + uidUtils.newId();
     }
 
-    protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
+    protected String createCacheFilterQuery(Order ordering, DataFilter filter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns, Collection<Step> otherDatasets) throws Exception {
         Map<String, Column> columnsByName = table.getColumnsByName();
 
         StringBuilder query = new StringBuilder("SELECT ");
 
         //Add select columns
-        Collection<String> selectColumns = filter!=null ? filter.getColumns() : null;
-        if (selectColumns!=null && selectColumns.size()>0) {
+        Collection<String> selectColumns = filter != null ? filter.getColumns() : null;
+        if (selectColumns != null && selectColumns.size() > 0) {
             selectColumns.retainAll(columnsByName.keySet()); //use only existing columns
             for (String name : selectColumns)
                 query.append(name).append(',');
-            query.setLength(query.length()-1);
+            query.setLength(query.length() - 1);
         } else {
             for (Column column : table.getColumns())
-                if (column.getType()== org.fao.fenix.d3s.cache.dto.dataset.Type.array)
+                if (column.getType() == org.fao.fenix.d3s.cache.dto.dataset.Type.array)
                     query.append("ARRAY_GET (").append(column.getName()).append(",1), ");
                 else
                     query.append(column.getName()).append(", ");
-            query.setLength(query.length()-2);
+            query.setLength(query.length() - 2);
         }
 
         //Add source table
         query.append(" FROM ").append(table.getTableName());
 
         //Add where condition
-        StandardFilter rowsFilter = filter!=null ? filter.getRows() : null;
-        appendWhereCondition(query,rowsFilter,table,params,types,dsdColumns);
+        StandardFilter rowsFilter = filter != null ? filter.getRows() : null;
+        appendWhereCondition(query, rowsFilter, table, params, types, dsdColumns, otherDatasets);
 
         //Add ordering
-        if (ordering!=null)
+        if (ordering != null)
             query.append(ordering.toH2SQL(columnsByName.keySet().toArray(new String[columnsByName.size()])));
 
         //Return query
@@ -85,42 +88,42 @@ public abstract class Process <T> {
     protected String createCacheDeleteQuery(StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
         StringBuilder query = new StringBuilder("DELETE FROM ").append(table.getTableName());
         //Add where condition
-        appendWhereCondition(query,rowsFilter,table,params,types,dsdColumns);
+        appendWhereCondition(query, rowsFilter, table, params, types, dsdColumns, null);
         //Return query
         return query.toString();
     }
 
     protected String getTmpId(String uid, String version) {
-        return uid!=null ? (version!=null ? uid + "@@@" + version : uid) : null;
+        return uid != null ? (version != null ? uid + "@@@" + version : uid) : null;
     }
 
-    protected void appendWhereCondition (StringBuilder query, StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
+    protected void appendWhereCondition(StringBuilder query, StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns, Collection<Step> otherSteps) throws Exception {
         //TODO support types
         Map<String, Column> columnsByName = table.getColumnsByName();
         Map<String, String> codeLists = new HashMap<>();
         for (DSDColumn column : dsdColumns)
-            if (column.getDataType()== DataType.code) {
+            if (column.getDataType() == DataType.code) {
                 OjCodeList codeList = column.getDomain().getCodes().iterator().next();
                 codeLists.put(column.getId(), getTmpId(codeList.getIdCodeList(), codeList.getVersion()));
             }
 
         //Add where condition
         StringBuilder whereCondition = new StringBuilder();
-        if (rowsFilter!=null)
+        if (rowsFilter != null) {
             for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilter.entrySet()) {
                 String fieldName = conditionEntry.getKey();
                 Column column = columnsByName.get(fieldName);
                 FieldFilter fieldFilter = conditionEntry.getValue();
 
-                if (column==null)
-                    throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                if (column == null)
+                    throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
 
                 org.fao.fenix.d3s.cache.dto.dataset.Type columnType = column.getType();
-                if (fieldFilter!=null) {
+                if (fieldFilter != null) {
                     switch (fieldFilter.retrieveFilterType()) {
                         case enumeration:
-                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.string)
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                            if (columnType != org.fao.fenix.d3s.cache.dto.dataset.Type.string)
+                                throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                             whereCondition.append(" AND ").append(fieldName).append(" IN (");
                             for (String value : fieldFilter.enumeration) {
                                 whereCondition.append("?,");
@@ -128,63 +131,152 @@ public abstract class Process <T> {
                             }
                             whereCondition.setCharAt(whereCondition.length() - 1, ')');
                             break;
+                        case table:
+
+                            validate(fieldFilter, dsdColumns, otherSteps);
+                            for (TableFilter filter : fieldFilter.tables) {
+                                whereCondition.append(" AND ").append(fieldName).append(" IN (");
+                                Step tmpStep = null;
+                                for (Step step : otherSteps)
+                                    if (step.getRid().getId().equals(filter.getUid()))
+                                        tmpStep = step;
+
+                                if (tmpStep == null)
+                                    throw new Exception("Something wrong on steps");
+
+                                switch (tmpStep.getType()) {
+
+                                    case query:
+                                        if (((QueryStep) (tmpStep)).getParams() == null || ((QueryStep) (tmpStep)).getParams().length == 0)
+                                            throw new Exception("Wrong table structure for filter: parameters should not be empty");
+                                        params.addAll(Arrays.asList(((QueryStep) (tmpStep)).getParams()));
+                                        whereCondition.append(tmpStep.getData()).append(" )");
+                                        break;
+
+                                    case iterator:
+                                        IteratorStep iteratorStep = (IteratorStep) tmpStep;
+                                        Iterator<Object[]> it = iteratorStep.getData();
+                                        while (it.hasNext())
+                                            whereCondition.append(it.next()[0]).append(", ");
+                                        whereCondition.setLength(whereCondition.length() - 2);
+                                        whereCondition.append(" )");
+                                        break;
+
+                                    case table:
+                                        // TODO
+                                        break;
+                                }
+                                whereCondition.append(" OR ");
+                            }
+                            whereCondition.setLength(whereCondition.length() - 4);
+
+                            break;
                         case time:
-                            if (columnType!= org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                            if (columnType != org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
+                                throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                             whereCondition.append(" AND (");
                             for (TimeFilter timeFilter : fieldFilter.time) {
-                                if (timeFilter.from!=null) {
+                                if (timeFilter.from != null) {
                                     whereCondition.append(fieldName).append(" >= ?");
                                     params.add(timeFilter.getFrom(column.getPrecision()));
                                 }
-                                if (timeFilter.to!=null) {
-                                    if (timeFilter.from!=null)
+                                if (timeFilter.to != null) {
+                                    if (timeFilter.from != null)
                                         whereCondition.append(" AND ");
                                     whereCondition.append(fieldName).append(" <= ?");
                                     params.add(timeFilter.getTo(column.getPrecision()));
                                 }
                                 whereCondition.append(" OR ");
                             }
-                            whereCondition.setLength(whereCondition.length()-4);
+                            whereCondition.setLength(whereCondition.length() - 4);
                             whereCondition.append(')');
                             break;
                         case code:
                             String codeList = codeLists.get(fieldName);
                             whereCondition.append(" AND ");
-                            if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.string) {
+                            if (columnType == org.fao.fenix.d3s.cache.dto.dataset.Type.string) {
                                 whereCondition.append(fieldName).append(" IN (");
                                 for (CodesFilter codesFilter : fieldFilter.codes) {
                                     String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
-                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
-                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                                    if (codeList == null || filterCodeList == null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                                     for (String code : codesFilter.codes) {
                                         whereCondition.append("?,");
                                         params.add(code);
                                     }
                                 }
-                                whereCondition.setCharAt(whereCondition.length()-1, ')');
-                            } else if (columnType== org.fao.fenix.d3s.cache.dto.dataset.Type.array) {
+                                whereCondition.setCharAt(whereCondition.length() - 1, ')');
+                            } else if (columnType == org.fao.fenix.d3s.cache.dto.dataset.Type.array) {
                                 whereCondition.append('(');
                                 for (CodesFilter codesFilter : fieldFilter.codes) {
                                     String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
-                                    if (codeList==null || filterCodeList==null || !codeList.equals(filterCodeList))
-                                        throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                                    if (codeList == null || filterCodeList == null || !codeList.equals(filterCodeList))
+                                        throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                                     for (String code : codesFilter.codes) {
                                         whereCondition.append("ARRAY_CONTAINS (").append(fieldName).append(", ?) OR ");
                                         params.add(code);
                                     }
                                 }
-                                whereCondition.setLength(whereCondition.length()-4);
+                                whereCondition.setLength(whereCondition.length() - 4);
                                 whereCondition.append(')');
                             } else
-                                throw new Exception("Wrong table structure for filter:"+table.getTableName()+'.'+fieldName);
+                                throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                     }
 
                 }
             }
-        if (whereCondition.length()>0)
+        }
+        if (whereCondition.length() > 0)
             query.append(" WHERE ").append(whereCondition.substring(5));
     }
+
+    private void validate(FieldFilter filters, Collection<DSDColumn> dsdColumns, Collection<Step> otherSteps) throws Exception {
+
+       /*
+            1) check parameters of table filter
+            2) check dataset exists into the sid parameter
+            3) check column exists into the dataset
+            4) check column compatibility between source column and dynamic column
+        */
+
+        for (TableFilter filter : filters.tables) {
+            DSDDataset associatedDataset = null;
+            DSDColumn associatedColumn = null;
+            DSDColumn sourceColumn = null;
+
+            String uid = (filter.getUid() != null) ? filter.getUid() : null;
+            String columnID = (filter.getColumn() != null) ? filter.getColumn() : null;
+
+            if (uid == null)
+                throw new Exception("Wrong table structure for filter parameters: uid parameter misses");
+            if (columnID == null)
+                throw new Exception("Wrong table structure for filter parameters: column parameter misses");
+
+
+            for (Step step : otherSteps) {
+                if (step.getRid().getId().equals(uid))
+                    associatedDataset = step.getCurrentDsd();
+            }
+            if (associatedDataset == null)
+                throw new Exception("Wrong table structure for filter parameters: sid is not compatible with the dataset");
+            for (DSDColumn column : associatedDataset.getColumns())
+                if (column.getId().equals(columnID))
+                    associatedColumn = column;
+            if (associatedColumn == null)
+                throw new Exception("Wrong table structure for filter parameters: this column " + columnID + " does not exists into the parameters");
+            for (DSDColumn column : dsdColumns)
+                if (column.getId().equals(columnID))
+                    sourceColumn = column;
+            if (sourceColumn == null)
+                throw new Exception("Wrong table structure for filter parameters: this column " + columnID + " does not exists into the source dataset");
+
+            if (sourceColumn.getDataType() != associatedColumn.getDataType())
+                throw new Exception("Wrong configuration: different datatype between columns");
+            if (sourceColumn.getDataType().equals(DataType.code) && sourceColumn.getDomain() != associatedColumn.getDomain())
+                throw new Exception("Wrong configuration: domain is different between two columns");
+        }
+    }
+
 
 }
 
