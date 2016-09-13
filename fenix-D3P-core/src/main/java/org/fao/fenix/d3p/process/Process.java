@@ -8,10 +8,7 @@ import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.UIDUtils;
-import org.fao.fenix.d3p.dto.IteratorStep;
-import org.fao.fenix.d3p.dto.QueryStep;
-import org.fao.fenix.d3p.dto.Step;
-import org.fao.fenix.d3p.dto.StepType;
+import org.fao.fenix.d3p.dto.*;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 
@@ -147,23 +144,26 @@ public abstract class Process<T> {
                                 switch (tmpStep.getType()) {
 
                                     case query:
-                                        if (((QueryStep) (tmpStep)).getParams() == null || ((QueryStep) (tmpStep)).getParams().length == 0)
-                                            throw new Exception("Wrong table structure for filter: parameters should not be empty");
-                                        params.addAll(Arrays.asList(((QueryStep) (tmpStep)).getParams()));
-                                        whereCondition.append(tmpStep.getData()).append(" )");
+                                        handleDynamicQueryStep(params, tmpStep, dsdColumns, whereCondition, filter, otherSteps);
                                         break;
 
                                     case iterator:
+
                                         IteratorStep iteratorStep = (IteratorStep) tmpStep;
                                         Iterator<Object[]> it = iteratorStep.getData();
-                                        while (it.hasNext())
-                                            whereCondition.append(it.next()[0]).append(", ");
-                                        whereCondition.setLength(whereCondition.length() - 2);
+                                        while (it.hasNext()) {
+                                            whereCondition.append("?,");
+                                            params.add(it.next());
+                                        }
                                         whereCondition.append(" )");
                                         break;
 
                                     case table:
-                                        // TODO
+
+                                        TableStep step = (TableStep) tmpStep;
+                                        String querySelect = "SELECT " + fieldName + " FROM " + step.getData();
+                                        String ridToAppend = (step.getRid() != null && step.getRid().getId() != null) ? "AS " + step.getRid().getId() : "";
+                                        whereCondition.append(querySelect).append(ridToAppend).append(" )");
                                         break;
                                 }
                                 whereCondition.append(" OR ");
@@ -230,6 +230,7 @@ public abstract class Process<T> {
             query.append(" WHERE ").append(whereCondition.substring(5));
     }
 
+
     private void validate(FieldFilter filters, Collection<DSDColumn> dsdColumns, Collection<Step> otherSteps) throws Exception {
 
        /*
@@ -238,6 +239,8 @@ public abstract class Process<T> {
             3) check column exists into the dataset
             4) check column compatibility between source column and dynamic column
         */
+        if (otherSteps == null)
+            throw new Exception("Wrong table structure for filter parameters: sid parameters miss");
 
         for (TableFilter filter : filters.tables) {
             DSDDataset associatedDataset = null;
@@ -272,9 +275,36 @@ public abstract class Process<T> {
 
             if (sourceColumn.getDataType() != associatedColumn.getDataType())
                 throw new Exception("Wrong configuration: different datatype between columns");
-            if (sourceColumn.getDataType().equals(DataType.code) && sourceColumn.getDomain() != associatedColumn.getDomain())
+            if (sourceColumn.getDataType().equals(DataType.code) && sourceColumn.getDomain().getCodes().iterator().next().getIdCodeList() != associatedColumn.getDomain().getCodes().iterator().next().getIdCodeList())
                 throw new Exception("Wrong configuration: domain is different between two columns");
         }
+    }
+
+
+    // handle dynamic query step
+    private void handleDynamicQueryStep(Collection<Object> params, Step tmpStep, Collection<DSDColumn> dsdColumns, StringBuilder whereCondition, TableFilter filter, Collection<Step> otherSteps) throws Exception {
+
+        // add parameters
+        params.addAll(Arrays.asList(((QueryStep) (tmpStep)).getParams()));
+        DSDDataset otherDataset = null;
+        Iterator<Step> itSteps = otherSteps.iterator();
+        boolean found = false;
+        Step tmp = null;
+        while (itSteps.hasNext() && !found) {
+            tmp = itSteps.next();
+            if (tmp.getRid().getId().equals(filter.getUid())) {
+                found = true;
+                otherDataset = tmp.getDsd();
+            }
+        }
+
+        if (tmp == null)
+            throw new Exception("Something went wrong");
+        // query to select data
+        String queryString = "( " + tmp.getData().toString() + " ) AS " + filter.getUid();
+        DataFilter dataFilter = new DataFilter();
+        dataFilter.addColumn(filter.getColumn());
+        whereCondition.append(createCacheFilterQuery(null, dataFilter, new Table(queryString, otherDataset), params, null, dsdColumns, null)).append(" )");
     }
 
 
