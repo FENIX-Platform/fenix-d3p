@@ -109,6 +109,10 @@ public abstract class Process<T> {
         if (rowsFilter != null) {
             for (Map.Entry<String, FieldFilter> conditionEntry : rowsFilter.entrySet()) {
                 String fieldName = conditionEntry.getKey();
+                boolean exclude = fieldName.startsWith("!");
+                if (exclude)
+                    fieldName = fieldName.substring(1);
+
                 Column column = columnsByName.get(fieldName);
                 FieldFilter fieldFilter = conditionEntry.getValue();
 
@@ -121,7 +125,7 @@ public abstract class Process<T> {
                         case enumeration:
                             if (columnType != org.fao.fenix.d3s.cache.dto.dataset.Type.string)
                                 throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
-                            whereCondition.append(" AND ").append(fieldName).append(" IN (");
+                            whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
                             for (String value : fieldFilter.enumeration) {
                                 whereCondition.append("?,");
                                 params.add(value);
@@ -132,7 +136,7 @@ public abstract class Process<T> {
 
                             validate(fieldFilter, dsdColumns, otherSteps);
                             for (TableFilter filter : fieldFilter.tables) {
-                                whereCondition.append(" AND ").append(fieldName).append(" IN (");
+                                whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
                                 Step tmpStep = null;
                                 for (Step step : otherSteps)
                                     if (step.getRid().getId().equals(filter.getUid()))
@@ -172,19 +176,39 @@ public abstract class Process<T> {
 
                             break;
                         case time:
-                            if (columnType != org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
+                            if (columnType!=org.fao.fenix.d3s.cache.dto.dataset.Type.integer)
                                 throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
                             whereCondition.append(" AND (");
                             for (TimeFilter timeFilter : fieldFilter.time) {
                                 if (timeFilter.from != null) {
-                                    whereCondition.append(fieldName).append(" >= ?");
+                                    whereCondition.append(fieldName).append(exclude ? " < ?" : " >= ?");
                                     params.add(timeFilter.getFrom(column.getPrecision()));
                                 }
                                 if (timeFilter.to != null) {
                                     if (timeFilter.from != null)
                                         whereCondition.append(" AND ");
-                                    whereCondition.append(fieldName).append(" <= ?");
+                                    whereCondition.append(fieldName).append(exclude ? " > ?" : " <= ?");
                                     params.add(timeFilter.getTo(column.getPrecision()));
+                                }
+                                whereCondition.append(" OR ");
+                            }
+                            whereCondition.setLength(whereCondition.length() - 4);
+                            whereCondition.append(')');
+                            break;
+                        case number:
+                            if (columnType!=org.fao.fenix.d3s.cache.dto.dataset.Type.integer && columnType!=org.fao.fenix.d3s.cache.dto.dataset.Type.real)
+                                throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
+                            whereCondition.append(" AND (");
+                            for (NumberFilter numberFilter : fieldFilter.number) {
+                                if (numberFilter.from != null) {
+                                    whereCondition.append(fieldName).append(exclude ? " < ?" : " >= ?");
+                                    params.add(numberFilter.from);
+                                }
+                                if (numberFilter.to != null) {
+                                    if (numberFilter.from != null)
+                                        whereCondition.append(" AND ");
+                                    whereCondition.append(fieldName).append(exclude ? " > ?" : " <= ?");
+                                    params.add(numberFilter.to);
                                 }
                                 whereCondition.append(" OR ");
                             }
@@ -195,7 +219,7 @@ public abstract class Process<T> {
                             String codeList = codeLists.get(fieldName);
                             whereCondition.append(" AND ");
                             if (columnType == org.fao.fenix.d3s.cache.dto.dataset.Type.string) {
-                                whereCondition.append(fieldName).append(" IN (");
+                                whereCondition.append(fieldName).append(exclude ? " NOT IN (" : " IN (");
                                 for (CodesFilter codesFilter : fieldFilter.codes) {
                                     String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
                                     if (codeList == null || filterCodeList == null || !codeList.equals(filterCodeList))
@@ -207,7 +231,7 @@ public abstract class Process<T> {
                                 }
                                 whereCondition.setCharAt(whereCondition.length() - 1, ')');
                             } else if (columnType == org.fao.fenix.d3s.cache.dto.dataset.Type.array) {
-                                whereCondition.append('(');
+                                whereCondition.append(exclude ? " NOT (" : "(");
                                 for (CodesFilter codesFilter : fieldFilter.codes) {
                                     String filterCodeList = getTmpId(codesFilter.uid, codesFilter.version);
                                     if (codeList == null || filterCodeList == null || !codeList.equals(filterCodeList))
@@ -221,6 +245,13 @@ public abstract class Process<T> {
                                 whereCondition.append(')');
                             } else
                                 throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
+                            break;
+                        case bool:
+                            if (columnType != org.fao.fenix.d3s.cache.dto.dataset.Type.bool)
+                                throw new Exception("Wrong table structure for filter:" + table.getTableName() + '.' + fieldName);
+                            whereCondition.append(" AND ").append(fieldName).append(exclude ? " != ? " : " = ? ");
+                            params.add(fieldFilter.bool);
+                            break;
                     }
 
                 }
