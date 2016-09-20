@@ -104,20 +104,12 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 //Return source step
                 return source;
             } else { //Apply mode 1 or 2
-                //Replace value column id with formula
-                valueColumn.setId(getValueSelect(total, valueColumnId) + " as " + valueColumnId);
-                //Prepare query
-                Collection<Object> queryParameters = existingParams != null && existingParams.length > 0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
-                Collection<Integer> queryTypes = existingTypes != null && existingTypes.length > 0 ? new LinkedList<>(Arrays.asList(existingTypes)) : null;
-                String query = createCacheFilterQuery(null, null, new Table(tableName, dsd), queryParameters, queryTypes, dsd.getColumns(), null);
-                //Restore value column id
-                valueColumn.setId(valueColumnId);
                 //Create and return query step
                 QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
                 step.setDsd(dsd);
-                step.setData(query);
-                step.setParams(queryParameters.toArray());
-                step.setTypes(queryTypes != null && queryTypes.size() > 0 ? queryTypes.toArray(new Integer[queryTypes.size()]) : null);
+                step.setData(createQuery(dsd, tableName, total));
+                step.setParams(existingParams);
+                step.setTypes(existingTypes);
                 return step;
             }
         } finally {
@@ -127,6 +119,17 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
 
 
     //Utils
+
+    private String createQuery(DSDDataset dsd, String tableName, double total) {
+        StringBuilder query = new StringBuilder("SELECT ");
+        for (DSDColumn column : dsd.getColumns())
+            if ("value".equals(column.getSubject()))
+                query.append(getValueSelect(total, column.getId())).append(" AS ").append(column.getId()).append(',');
+            else
+                query.append(column.getId()).append(',');
+        query.setLength(query.length()-1);
+        return query.append(" FROM ").append(tableName).toString();
+    }
 
     private String getValueSelect (double total, String valueColumnId) {
         return valueColumnId+"*100/"+total;
@@ -170,58 +173,3 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
 
 
 }
-
-//Append label aggregations if needed
-/*            Collection<String> columnsName = params.getKey();
-            Language[] languages = DatabaseStandards.getLanguageInfo();
-            if (languages!=null && languages.length>0 && columnsName!=null && columnsName.size()>0)
-                for (DSDColumn column : dsd.getColumns())
-                    if ((column.getDataType()== DataType.code || column.getDataType()==DataType.customCode) && columnsName.contains(column.getId()))
-                        for (Language l : languages) {
-                            String id = column.getId() + '_' + l.getCode();
-                            if (!columnsName.contains(id))
-                                columnsName.add(id);
-                        }
-*/
-
-/*
-    private int[] getSQLTypes (DSDDataset dsd) {
-        if (dsd!=null && dsd.getColumns()!=null) {
-            Table tmpTable = new Table("tmp", dsd);
-            int[] types = new int[tmpTable.getColumns().size()];
-            Iterator<Column> columns = tmpTable.getColumns().iterator();
-            for (int i=0; i<types.length; i++)
-                switch (columns.next().getType()) {
-                    case bool:      types[i] = Types.BOOLEAN; break;
-                    case real:      types[i] = Types.DOUBLE; break;
-                    case string:    types[i] = Types.VARCHAR; break;
-                    case array:     types[i] = Types.ARRAY; break;
-                    case object:    types[i] = Types.OTHER; break;
-                    case integer:   types[i] = Types.BIGINT; break;
-                }
-            return types;
-        } else
-            return null;
-    }
-*/
-
-/*
-    private DSDDataset filter (DSDDataset source, DataFilter filter) {
-        DSDDataset dsd = new DSDDataset();
-        dsd.setAggregationRules(source.getAggregationRules());
-        dsd.setContextSystem("D3P");
-
-        Collection<String> columnsName = filter.getColumns();
-        if (columnsName!=null && columnsName.size()>0) {
-            Collection<DSDColumn> columns = new LinkedList<>();
-            for (DSDColumn column : source.getColumns())
-                if (columnsName.contains(column.getId()))
-                    columns.add(column);
-                else if (column.getKey()!=null && column.getKey())
-                    throw new UnsupportedOperationException("Cannot remove key columns from selection");
-            dsd.setColumns(columns);
-        } else
-            dsd.setColumns(source.getColumns());
-        return dsd;
-    }
-*/
