@@ -50,6 +50,8 @@ public class Group extends DisposableProcess<GroupParams> {
         boolean useDefaultStorage = source.getStorage() instanceof DefaultStorage;
         pid = useDefaultStorage ? uidUtils.getId() : null;
         //Append label aggregations if needed
+        if (params.getAggregations()==null)
+            params.setAggregations(new Aggregation[0]);
         Collection<Aggregation> aggregations = new LinkedList<>(Arrays.asList(params.getAggregations()));
         addLanguageColumnsAggregations(aggregations, params, dsd);
         //Define groups rule
