@@ -55,6 +55,9 @@ public class ToTable extends DisposableProcess {
                     cacheStorage.store(table, ((IteratorStep) source).getData(), 0, true, new Date());
                     break;
             }
+            connection.commit();
+        } catch (Exception ex) {
+            connection.rollback();
         } finally {
             connection.close();
         }
