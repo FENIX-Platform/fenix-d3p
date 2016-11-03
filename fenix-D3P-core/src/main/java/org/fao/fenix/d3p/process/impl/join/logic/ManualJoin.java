@@ -323,7 +323,7 @@ public class ManualJoin implements JoinLogic {
             List<String> joinId = new ArrayList<>();
             for (JoinParameter joinParameter : joinParameters[r])
                 joinId.add(joinParameter.getType() == JoinValueTypes.id ? (String) joinParameter.getValue() : null);
-            List<String> valuesId = Arrays.asList(valueParameters[r]);
+            List<String> valuesId = (valueParameters[r]!=null)? Arrays.asList(valueParameters[r]): null;
 
             for (DSDColumn column : dsdList[r].getColumns())
                 if (column.getSubject() != null) {
@@ -331,7 +331,7 @@ public class ManualJoin implements JoinLogic {
                     if (index >= 0)
                         keyColumns.get(index).setSubject(column.getSubject());
                     else
-                        index = valuesId.indexOf(column.getId());
+                        index = (valuesId!= null)?valuesId.indexOf(column.getId()) : -1;
                     if (index >= 0) {
                         Integer oldIndex = subjectsIndex.put(column.getSubject(), index);
                         if (oldIndex != null && oldIndex != index)
@@ -373,10 +373,11 @@ public class ManualJoin implements JoinLogic {
         }
         // select value columns
         for (int r = 0; r < valueParameters.length; r++)
-            for (int c = 0; c < valueParameters[r].length; c++)
-                if (valueParameters[r][c] != null)
-                    select.append(tablesName[r] + '.' + valueParameters[r][c]).append(" AS ").append(updateId(valueParameters[r][c], tablesName[r])).append(',');
-
+            if(valueParameters[r] != null) {
+                for (int c = 0; c < valueParameters[r].length; c++)
+                    if (valueParameters[r][c] != null)
+                        select.append(tablesName[r] + '.' + valueParameters[r][c]).append(" AS ").append(updateId(valueParameters[r][c], tablesName[r])).append(',');
+            }
         select.setLength(select.length() - 1);
 
         Object[] existingParamsInit = ((QueryStep) steps[0]).getParams();
