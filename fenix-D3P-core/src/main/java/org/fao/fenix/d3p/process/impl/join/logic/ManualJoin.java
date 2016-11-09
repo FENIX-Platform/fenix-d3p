@@ -478,15 +478,18 @@ public class ManualJoin implements JoinLogic {
             //check if exists column to be added
             if (parameters[0][j].getType() == JoinValueTypes.id &&
                     (dsdList[0].findColumn(parameters[0][j].getValue().toString())).getDataType() == DataType.code) {
-                for (Language language : languages)
-                    if (language.getCode() != null) {
-                        for (int i = 0; i < parameters.length; i++) {
-                            JoinParameter joinParameterlabel = new JoinParameter();
-                            joinParameterlabel.setType(JoinValueTypes.id);
-                            joinParameterlabel.setValue(parameters[0][j].getValue().toString() + '_' + language.getCode());
-                            result.get(i).add(joinParameterlabel);
+
+                if(languages!= null) {
+                    for (Language language : languages)
+                        if (language.getCode() != null) {
+                            for (int i = 0; i < parameters.length; i++) {
+                                JoinParameter joinParameterlabel = new JoinParameter();
+                                joinParameterlabel.setType(JoinValueTypes.id);
+                                joinParameterlabel.setValue(parameters[0][j].getValue().toString() + '_' + language.getCode());
+                                result.get(i).add(joinParameterlabel);
+                            }
                         }
-                    }
+                }
             }
         }
         return trasformListToArray(result);
