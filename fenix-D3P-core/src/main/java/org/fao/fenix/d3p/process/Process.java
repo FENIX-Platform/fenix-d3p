@@ -6,6 +6,7 @@ import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.OjCodeList;
 import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.JSONUtils;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.dto.*;
@@ -13,13 +14,15 @@ import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 
 import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.MalformedInputException;
 import java.util.*;
 
 public abstract class Process<T> {
-    @Inject
-    UIDUtils uidUtils;
+    @Inject UIDUtils uidUtils;
+    @Inject JSONUtils jsonUtils;
 
     /**
      * Get the expected external parameters Java type. This method is used to parse JSON payload.
@@ -40,6 +43,44 @@ public abstract class Process<T> {
      */
     public abstract Step process(T params, Step[] sourceStep) throws Exception;
 
+
+
+    //Variables management
+    private static ThreadLocal<Map<String,Object[]>> channelVariables = new ThreadLocal<>();
+    private static Map<String,Object[]> globalVariables = new HashMap<>();
+
+    public Object[] getVariable(String name) {
+        Object[] value = channelVariables.get() != null ? channelVariables.get().get(name) : null;
+        return value!=null ? value : globalVariables.get(name);
+    }
+    public Object setChannelVariable(String name, Object[] value) {
+        Map<String,Object[]> variables = channelVariables.get();
+        if (variables==null)
+            channelVariables.set(variables = new TreeMap<>());
+        return variables.put(name, value);
+    }
+    public Object setGlobalVariable(String name, Object[] value) {
+        return globalVariables.put(name, value);
+    }
+
+    public String formatVariables(String text) throws Exception {
+        StringBuilder buffer = new StringBuilder(text);
+        for (int from=buffer.indexOf("<<"); from>=0 && from<buffer.length(); from=buffer.indexOf("<<",from)) {
+            int to = buffer.indexOf(">>",from);
+            if (to>0) {
+                String value = getVariableString(buffer.substring(from+2,to));
+                if (value==null)
+                    throw new BadRequestException("Variable not found: "+buffer.substring(from+2,to));
+                buffer.replace(from,to+2,value);
+                from = to;
+            } else
+                from = -1;
+        }
+        return buffer.toString();
+    }
+    public String getVariableString(String name) throws Exception {
+        return JSONUtils.toJSON(getVariable(name));
+    }
 
     //UTILS
     protected String getRandomTmpTableName() {

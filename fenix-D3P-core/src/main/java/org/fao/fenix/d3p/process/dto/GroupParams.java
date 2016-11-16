@@ -1,8 +1,8 @@
 package org.fao.fenix.d3p.process.dto;
 
 public class GroupParams {
-    private String[] by;
-    private Aggregation[] aggregations;
+    private String[] by = new String[0];
+    private Aggregation[] aggregations = new Aggregation[0];
 
 
     public String[] getBy() {
