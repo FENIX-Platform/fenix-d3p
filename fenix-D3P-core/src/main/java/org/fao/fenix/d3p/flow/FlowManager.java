@@ -168,7 +168,7 @@ public class FlowManager {
         resultRidList.addAll(results);
         resultRidList.removeAll(sources);
         for (org.fao.fenix.commons.process.dto.Process processInfo : flow)
-            if (processInfo.isResult())
+            if (processInfo.getResult()!=null && processInfo.getResult())
                 resultRidList.add(processInfo.getRid());
         //Retrieve dataset source steps
         sources.removeAll(results);

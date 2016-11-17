@@ -10,19 +10,26 @@ import org.fao.fenix.commons.utils.JSONUtils;
 import org.fao.fenix.commons.utils.Order;
 import org.fao.fenix.commons.utils.UIDUtils;
 import org.fao.fenix.d3p.dto.*;
+import org.fao.fenix.d3p.process.dto.VariableStorage;
 import org.fao.fenix.d3s.cache.dto.dataset.Column;
 import org.fao.fenix.d3s.cache.dto.dataset.Table;
 
+import javax.decorator.Decorator;
+import javax.decorator.Delegate;
+import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
+import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.MalformedInputException;
 import java.util.*;
 
+@Dependent
 public abstract class Process<T> {
     @Inject UIDUtils uidUtils;
     @Inject JSONUtils jsonUtils;
+    @Inject VariableStorage variableStorage;
 
     /**
      * Get the expected external parameters Java type. This method is used to parse JSON payload.
@@ -46,21 +53,14 @@ public abstract class Process<T> {
 
 
     //Variables management
-    private static ThreadLocal<Map<String,Object[]>> channelVariables = new ThreadLocal<>();
-    private static Map<String,Object[]> globalVariables = new HashMap<>();
-
-    public Object[] getVariable(String name) {
-        Object[] value = channelVariables.get() != null ? channelVariables.get().get(name) : null;
-        return value!=null ? value : globalVariables.get(name);
+    public Object getVariable(String name) {
+        return variableStorage.getVariable(name);
     }
     public Object setChannelVariable(String name, Object[] value) {
-        Map<String,Object[]> variables = channelVariables.get();
-        if (variables==null)
-            channelVariables.set(variables = new TreeMap<>());
-        return variables.put(name, value);
+        return variableStorage.setChannelVariable(name, value);
     }
     public Object setGlobalVariable(String name, Object[] value) {
-        return globalVariables.put(name, value);
+        return variableStorage.setGlobalVariable(name,value);
     }
 
     public String formatVariables(String text) throws Exception {
@@ -119,8 +119,8 @@ public abstract class Process<T> {
         if (ordering != null)
             query.append(ordering.toH2SQL(columnsByName.keySet().toArray(new String[columnsByName.size()])));
 
-        //Return query
-        return query.toString();
+        //Return query with variables
+        return formatVariables(query.toString());
     }
 
     protected String createCacheDeleteQuery(StandardFilter rowsFilter, Table table, Collection<Object> params, Collection<Integer> types, Collection<DSDColumn> dsdColumns) throws Exception {
@@ -293,6 +293,20 @@ public abstract class Process<T> {
                             whereCondition.append(" AND ").append(fieldName).append(exclude ? " != ? " : " = ? ");
                             params.add(fieldFilter.bool);
                             break;
+                        case var:
+                            //TODO verify column data type and values type cmpatibility
+                            Object value = getVariable(fieldFilter.variable);
+                            if (value instanceof Object[]) {
+                                whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
+                                for (Object v : (Object[])value) {
+                                    whereCondition.append("?,");
+                                    params.add(v);
+                                }
+                                whereCondition.setCharAt(whereCondition.length() - 1, ')');
+                            } else {
+                                whereCondition.append(" AND ").append(fieldName).append(exclude ? " != ? " : " = ? ");
+                                params.add(value);
+                            }
                     }
 
                 }

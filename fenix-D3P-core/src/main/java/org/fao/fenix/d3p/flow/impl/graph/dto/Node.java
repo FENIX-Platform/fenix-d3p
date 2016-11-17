@@ -11,7 +11,7 @@ public class Node {
     public StepId id;
     public Collection<Node> prev = new LinkedList<>();
     public Collection<Node> next = new LinkedList<>();
-    public boolean result = false;
+    public Boolean result;
     public int index = -1;
 
     public Collection<Step> sources = new LinkedList<>();
@@ -24,13 +24,13 @@ public class Node {
     }
     public Node(org.fao.fenix.commons.process.dto.Process processInfo) {
         index = processInfo.index;
-        result = processInfo.isResult();
+        result = processInfo.getResult();
         id = processInfo.getRid();
     }
 
     //Utils
     public boolean isOneToMany() {
-        return next.size()+(result?1:0)>1;
+        return next.size()+((result!=null && result)?1:0)>1;
     }
     public boolean isManyToOne() {
         return prev.size()>1;
@@ -39,7 +39,7 @@ public class Node {
         return prev.size()==0;
     }
     public boolean isResult() {
-        return result || next.size()==0;
+        return result==null ? next.size()==0 : result;
     }
 
     public void addPrev(Node node) {

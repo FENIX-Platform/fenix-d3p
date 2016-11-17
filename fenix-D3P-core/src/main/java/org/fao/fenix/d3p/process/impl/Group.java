@@ -158,7 +158,7 @@ public class Group extends DisposableProcess<GroupParams> {
                 query.append(gk).append(',');
             query.setLength(query.length() - 1);
         }
-        return query.toString();
+        return formatVariables(query.toString());
     }
 
 

@@ -2,13 +2,14 @@ package org.fao.fenix.d3p.process.dto;
 
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Query {
     private String query;
     private Collection<QueryParameter> queryParameters;
     private Boolean update;
-    private Collection<String> columns;
-
+    private Map<String,String> values = new HashMap<>();
 
     public String getQuery() {
         return query;
@@ -34,11 +35,11 @@ public class Query {
         this.update = update;
     }
 
-    public Collection<String> getColumns() {
-        return columns;
+    public Map<String, String> getValues() {
+        return values;
     }
 
-    public void setColumns(Collection<String> columns) {
-        this.columns = columns;
+    public void setValues(Map<String, String> values) {
+        this.values = values != null ? values : new HashMap<String,String>();
     }
 }

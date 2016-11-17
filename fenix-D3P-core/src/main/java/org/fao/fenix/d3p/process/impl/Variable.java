@@ -29,10 +29,10 @@ public class Variable extends org.fao.fenix.d3p.process.Process<VariableFilter> 
 
     @Override
     public Step process(VariableFilter params, Step... sourceStep) throws Exception {
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
-            throw new UnsupportedOperationException("Percentage filter can be applied only on a table or an other select query");
+            throw new UnsupportedOperationException("Variable filter can be applied only on a table or an other select query");
         String tableName = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
         //Retrieve variables values
@@ -158,23 +158,16 @@ public class Variable extends org.fao.fenix.d3p.process.Process<VariableFilter> 
             if (variable.getType()==VariableValueType.sql && type!=StepType.query && type!=StepType.table)
                 throw new BadRequestException("In process 'var', a 'sql' type variable 'value' can be used only with 'table' or 'query' source step");
 
-            if (variable.getType()==VariableValueType.id && getColumn((String) variable.getValue(), dsd)==null)
+            if (variable.getType()==VariableValueType.id && dsd.findColumn((String) variable.getValue())==null)
                 throw new BadRequestException("In process 'var', specified column '"+variable.getValue()+"' cannot be found");
         }
-    }
-
-    private DSDColumn getColumn (String id, DSDDataset dsd) {
-        for (DSDColumn column : dsd.getColumns())
-            if (column.getId().equals(id))
-                return column;
-        return null;
     }
 
     //Utils
     private Object[] getRow(ResultSet resultSet, int columnsCount) throws SQLException {
         Object[] row = new Object[columnsCount];
         for (int i=0; i<columnsCount; i++)
-            row[i] = resultSet.getObject(i);
+            row[i] = resultSet.getObject(i+1);
         return row;
     }
 

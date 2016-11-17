@@ -30,9 +30,9 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
         String sourceData = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
         //Update dsd before query creation
-        filter(dsd,params.getColumns());
+        filter(dsd,params.getValues().keySet());
         //Create query
-        String query = createQuery(params.getQuery(), dsd, sourceData);
+        String query = formatVariables(createQuery(params.getQuery(), params.getValues(), sourceData));
         //Update query parameters
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
@@ -78,22 +78,24 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
 
 
     //QUERY UTILS
-    private String createQuery(String paramQuery, DSDDataset dsd, String source) throws Exception {
+    private String createQuery(String paramQuery, Map<String,String> values, String source) throws Exception {
         StringBuilder query = new StringBuilder();
-        //Prepare select-from section
-        String paramQueryLowerCase = paramQuery!=null ? paramQuery.trim().toLowerCase() : "";
-        if (paramQueryLowerCase.indexOf("select")!=0) {
-            query = new StringBuilder("SELECT ");
-            for (DSDColumn column : dsd.getColumns())
-                query.append(column.getId()).append(',');
-            if (paramQueryLowerCase.indexOf("from")!=0) {
-                query.setLength(query.length() - 1);
-                query.append(" FROM ").append(source);
+        //Select section
+        if (values.size()>0) {
+            query.append("SELECT ");
+            for (Map.Entry<String,String> valueEntry : values.entrySet()) {
+                String value = valueEntry.getValue();
+                query.append(value!=null && value.trim().length()>0 ? value.trim() : valueEntry.getKey()).append(',');
             }
-            query.append(' ');
+            query.setLength(query.length() - 1);
         }
+        //From section
+        query.append(" FROM ").append(source);
+        //Where section
+        if (paramQuery!=null)
+            query.append(' ').append(paramQuery);
         //Return query
-        return query.append(paramQuery!=null ? paramQuery : "").toString();
+        return query.toString();
     }
 
 }
