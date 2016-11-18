@@ -12,6 +12,7 @@ import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
 
 import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
 import java.sql.Connection;
 import java.util.*;
 
@@ -32,7 +33,7 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
         //Update dsd before query creation
         filter(dsd,params.getValues().keySet());
         //Create query
-        String query = formatVariables(createQuery(params.getQuery(), params.getValues(), sourceData));
+        String query = formatVariables(createQuery(params.getQuery(), params.getValues(), sourceData, dsd));
         //Update query parameters
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
@@ -78,12 +79,15 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
 
 
     //QUERY UTILS
-    private String createQuery(String paramQuery, Map<String,String> values, String source) throws Exception {
+    private String createQuery(String paramQuery, Map<String,String> values, String source, DSDDataset dsd) throws Exception {
         StringBuilder query = new StringBuilder();
         //Select section
         if (values.size()>0) {
             query.append("SELECT ");
             for (Map.Entry<String,String> valueEntry : values.entrySet()) {
+                DSDColumn column = dsd.findColumn(valueEntry.getKey());
+                if (column==null)
+                    throw new BadRequestException("The column '"+ valueEntry.getKey()+"' specified into the 'select' process doesn't exist");
                 String value = valueEntry.getValue();
                 query.append(value!=null && value.trim().length()>0 ? value.trim()+" AS "+valueEntry.getKey(): valueEntry.getKey()).append(',');
             }
