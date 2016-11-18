@@ -85,9 +85,11 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
             query.append("SELECT ");
             for (Map.Entry<String,String> valueEntry : values.entrySet()) {
                 String value = valueEntry.getValue();
-                query.append(value!=null && value.trim().length()>0 ? value.trim() : valueEntry.getKey()).append(',');
+                query.append(value!=null && value.trim().length()>0 ? value.trim()+" AS "+valueEntry.getKey(): valueEntry.getKey()).append(',');
             }
             query.setLength(query.length() - 1);
+        } else {
+            query.append("SELECT *");
         }
         //From section
         query.append(" FROM ").append(source);
