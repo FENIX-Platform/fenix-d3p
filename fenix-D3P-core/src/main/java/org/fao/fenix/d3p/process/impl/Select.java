@@ -2,6 +2,8 @@ package org.fao.fenix.d3p.process.impl;
 
 
 import org.fao.fenix.commons.msd.dto.full.*;
+import org.fao.fenix.commons.msd.dto.type.DataType;
+import org.fao.fenix.commons.utils.Language;
 import org.fao.fenix.d3p.dto.QueryStep;
 import org.fao.fenix.d3p.dto.Step;
 import org.fao.fenix.d3p.dto.StepFactory;
@@ -10,6 +12,7 @@ import org.fao.fenix.d3p.process.dto.Query;
 import org.fao.fenix.d3p.process.dto.QueryParameter;
 import org.fao.fenix.d3p.process.type.ProcessName;
 import org.fao.fenix.d3s.msd.services.spi.Resources;
+import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
@@ -30,10 +33,21 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
             throw new UnsupportedOperationException("Select filter can be applied only on a table or an other select query");
         String sourceData = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
+        //Add label columns if needed
+        Map<String,String> valuesParameter = params.getValues();
+        Language[] languages = DatabaseStandards.getLanguageInfo();
+        if (languages!=null && languages.length>0 && valuesParameter!=null && valuesParameter.size()>0)
+            for (DSDColumn column : dsd.getColumns())
+                if ((column.getDataType()== DataType.code || column.getDataType()==DataType.customCode) && valuesParameter.containsKey(column.getId()))
+                    for (Language l : languages) {
+                        String id = column.getId() + '_' + l.getCode();
+                        if (!valuesParameter.containsKey(id))
+                            valuesParameter.put(id,null);
+                    }
         //Update dsd before query creation
-        filter(dsd,params.getValues().keySet());
+        filter(dsd,params.getValues().keySet(),languages);
         //Create query
-        String query = formatVariables(createQuery(params.getQuery(), params.getValues(), sourceData, dsd));
+        String query = formatVariables(createQuery(params.getQuery(), valuesParameter, sourceData, dsd));
         //Update query parameters
         Object[] existingParams = type==StepType.query ? ((QueryStep)source).getParams() : null;
         Collection<Object> queryParameters = existingParams!=null && existingParams.length>0 ? new LinkedList<>(Arrays.asList(existingParams)) : new LinkedList<>();
@@ -68,13 +82,15 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
 
 
     //DSD adjustment (not distinct values)
-    private void filter(DSDDataset dsd, Collection<String> columns) throws Exception {
+    private void filter(DSDDataset dsd, Collection<String> columns, Language[] languages) throws Exception {
         if (columns!=null && columns.size()>0) {
             Collection<DSDColumn> dsdColumns = new LinkedList<>();
             for (String columnId : columns)
                 dsdColumns.add(dsd.findColumn(columnId));
             dsd.setColumns(dsdColumns);
         }
+        if (languages!=null && languages.length>0)
+            dsd.extend(languages);
     }
 
 
