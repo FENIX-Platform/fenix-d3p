@@ -243,13 +243,13 @@ public abstract class Process<T> {
                             for (NumberFilter numberFilter : fieldFilter.number) {
                                 if (numberFilter.from != null) {
                                     whereCondition.append(fieldName).append(exclude ? " < ?" : " >= ?");
-                                    params.add(numberFilter.from);
+                                    params.add(columnType==org.fao.fenix.d3s.cache.dto.dataset.Type.integer ? numberFilter.from.longValue() : numberFilter.from);
                                 }
                                 if (numberFilter.to != null) {
                                     if (numberFilter.from != null)
                                         whereCondition.append(" AND ");
                                     whereCondition.append(fieldName).append(exclude ? " > ?" : " <= ?");
-                                    params.add(numberFilter.to);
+                                    params.add(columnType==org.fao.fenix.d3s.cache.dto.dataset.Type.integer ? numberFilter.to.longValue() : numberFilter.to);
                                 }
                                 whereCondition.append(" OR ");
                             }
