@@ -39,7 +39,6 @@ public class Filter extends org.fao.fenix.d3p.process.Process<DataFilter> {
             otherSources = new ArrayList<>();
             for (int i=0; i<sourceStep.length; i++)
                 otherSources.add(sourceStep[i]);
-
         }
 
         //Add label columns if needed

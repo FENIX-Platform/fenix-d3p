@@ -58,6 +58,7 @@ public class ToTable extends DisposableProcess {
             connection.commit();
         } catch (Exception ex) {
             connection.rollback();
+            throw ex;
         } finally {
             connection.close();
         }
