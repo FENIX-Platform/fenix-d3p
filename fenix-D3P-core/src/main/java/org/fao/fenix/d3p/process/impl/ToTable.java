@@ -68,6 +68,7 @@ public class ToTable extends DisposableProcess {
 
     @Override
     public void dispose() throws Exception {
-        cacheStorage.delete(tableName);
+        if (cacheStorage!=null && tableName!=null)
+            cacheStorage.delete(tableName);
     }
 }
