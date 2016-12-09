@@ -72,7 +72,7 @@ public abstract class Process<T> {
                 if (value==null)
                     throw new BadRequestException("Variable not found: "+buffer.substring(from+2,to));
                 buffer.replace(from,to+2,value);
-                from = to;
+                from = 0;
             } else
                 from = -1;
         }
