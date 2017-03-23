@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Path("/processes")
-@Produces(MediaType.APPLICATION_JSON+"; charset=utf-8")
+@Produces({MediaType.APPLICATION_JSON+"; charset=utf-8", "application/flexmonster"})
 @Consumes(MediaType.APPLICATION_JSON)
 public class Processes {
     private static final String standardTemplatesBasePackage = Metadata.class.getPackage().getName();
