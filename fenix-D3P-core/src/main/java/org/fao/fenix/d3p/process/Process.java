@@ -79,7 +79,7 @@ public abstract class Process<T> {
         return buffer.toString();
     }
     public String getVariableString(String name) throws Exception {
-        return JSONUtils.toJSON(getVariable(name));
+        return JSONUtils.toJSON(getVariable(name)).replace('[','(').replace(']',')').replace('"','\'');
     }
 
     //UTILS
