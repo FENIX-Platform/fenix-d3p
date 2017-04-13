@@ -146,7 +146,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     }
 
     private void initialValidation(Step... sourceSteps) {
-        Step source = sourceSteps != null && sourceSteps.length == 1 ? sourceSteps[0] : null;
+        Step source = sourceSteps != null && sourceSteps.length > 0 ? sourceSteps[0] : null;
         if (source == null)
             throw new BadRequestException("there is not a source specified");
         // check storage is the same and query type is table or query

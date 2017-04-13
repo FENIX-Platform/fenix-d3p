@@ -27,7 +27,7 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
     @Override
     public Step process(Query params, Step... sourceStep) throws Exception {
         //Retrieve source informations
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("Select filter can be applied only on a table or an other select query");
