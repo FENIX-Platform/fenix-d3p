@@ -1,6 +1,7 @@
 package org.fao.fenix.d3p.flow.impl.graph.dto;
 
 import org.fao.fenix.commons.process.dto.StepId;
+import org.fao.fenix.d3p.dto.NodeSources;
 import org.fao.fenix.d3p.dto.Step;
 
 import java.util.Collection;
@@ -14,7 +15,7 @@ public class Node {
     public Boolean result;
     public int index = -1;
 
-    public Collection<Step> sources = new LinkedList<>();
+    public NodeSources sources = new NodeSources();
 
 
     public Node() {
@@ -26,6 +27,7 @@ public class Node {
         index = processInfo.index;
         result = processInfo.getResult();
         id = processInfo.getRid();
+        sources.init(processInfo.getSid());
     }
 
     //Utils
