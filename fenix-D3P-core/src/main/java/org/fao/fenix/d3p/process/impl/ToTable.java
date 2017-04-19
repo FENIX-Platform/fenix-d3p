@@ -26,7 +26,7 @@ public class ToTable extends DisposableProcess {
     @Override
     public Step process(Object params, Step... sourceStep) throws Exception {
         //Restireve source informations
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType sourceType = source!=null ? source.getType() : null;
         if (sourceType==null)
             throw new UnsupportedOperationException("toTable process can be applied only on one input");

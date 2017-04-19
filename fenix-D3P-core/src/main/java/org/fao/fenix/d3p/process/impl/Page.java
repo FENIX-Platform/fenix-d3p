@@ -17,7 +17,7 @@ public class Page extends org.fao.fenix.d3p.process.Process<org.fao.fenix.common
     @Override
     public Step process(org.fao.fenix.commons.utils.Page params, Step... sourceStep) throws Exception {
         //Retrieve source information
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType sourceType = source.getType();
         if (sourceType==null || (sourceType!=StepType.table && sourceType!=StepType.query))
             throw new UnsupportedOperationException("page process support only one table or query input step");

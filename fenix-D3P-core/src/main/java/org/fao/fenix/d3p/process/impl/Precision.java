@@ -117,7 +117,7 @@ public class Precision extends org.fao.fenix.d3p.process.Process<PrecisionLevel>
     @Override
     public Step process(PrecisionLevel params, Step... sourceStep) throws Exception {
         //Retrieve source informations
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType sourceType = source!=null ? source.getType() : null;
         if (sourceType==null || (sourceType!=StepType.table && sourceType!=StepType.query))
             throw new UnsupportedOperationException("Precision filter can be applied only on a table or an other select query");

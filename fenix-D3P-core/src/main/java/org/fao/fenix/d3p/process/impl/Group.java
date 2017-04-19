@@ -38,7 +38,7 @@ public class Group extends DisposableProcess<GroupParams> {
     @Override
     public Step process(GroupParams params, Step... sourceStep) throws Exception {
         //Retrieve source informations
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>0 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || (type!=StepType.table && type!=StepType.query))
             throw new UnsupportedOperationException("group process support only one table or query input step");

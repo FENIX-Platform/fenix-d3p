@@ -27,7 +27,7 @@ public class Distinct extends org.fao.fenix.d3p.process.Process {
     @Override
     public Step process(Object params, Step... sourceStep) throws Exception {
         //Retrieve source information
-        Step source = sourceStep!=null && sourceStep.length==1 ? sourceStep[0] : null;
+        Step source = sourceStep!=null && sourceStep.length>1 ? sourceStep[0] : null;
         StepType type = source!=null ? source.getType() : null;
         if (type==null || type!=StepType.table)
             throw new UnsupportedOperationException("distinct process support only one table input step");
