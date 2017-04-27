@@ -275,7 +275,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                     labelCaseQuery = labelCaseQuery.replace(value, label.get(language.getCode()));
 
             }
-            labelCaseQuery = labelCaseQuery.replace(columnId, columnId + "_" + language.getCode());
+            labelCaseQuery = labelCaseQuery.replace("AS "+columnId, "AS "+columnId + "_" + language.getCode());
             query.append(labelCaseQuery);
         }
     }
