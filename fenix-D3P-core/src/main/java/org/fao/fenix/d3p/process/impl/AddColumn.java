@@ -21,6 +21,7 @@ import org.fao.fenix.d3s.server.dto.DatabaseStandards;
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @ProcessName("addcolumn")
 public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams> {
@@ -282,7 +283,9 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
     // Utils
     private String buildRightString(Object value, DataType columnDatatype) {
-        return (value instanceof String && (columnDatatype == DataType.code || columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ? "\'" + value.toString() + "\'" : value.toString();
+        return (value instanceof String && (columnDatatype == DataType.code || columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ?
+                Pattern.matches("^(@@direct).*$",value.toString())?
+                        value.toString().replace("@@direct","") : "\'" + value.toString() + "\'" : value.toString();
     }
 
     // no, beacause there could be an expression(string) to generate an integer
