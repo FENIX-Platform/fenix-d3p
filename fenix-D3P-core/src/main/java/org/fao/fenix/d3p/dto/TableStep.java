@@ -38,7 +38,7 @@ public class TableStep extends Step<String> {
                 throw new NotAcceptableException();
             throw ex;
         }
-        return new DataIterator(rawData, connection, null, null);
+        return new DataIterator(rawData, connection, 30000l, null);
     }
 
     //Utils

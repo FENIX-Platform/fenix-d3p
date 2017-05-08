@@ -8,6 +8,7 @@ import javax.inject.Inject;
 import javax.ws.rs.NotAcceptableException;
 import java.sql.*;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 public class QueryStep extends Step<String> {
     private Object[] params;
@@ -22,7 +23,8 @@ public class QueryStep extends Step<String> {
 
     @Override
     public Iterator<Object[]> getData(Connection connection) throws Exception {
-        PreparedStatement statement = connection.prepareStatement(getData());
+        PreparedStatement statement = connection.prepareStatement(getData(),java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
+        statement.setFetchSize(1000);
         if(ProcessFactory.getTimeout()!= null)
             statement.setQueryTimeout(ProcessFactory.getTimeout());
         ResultSet rawData = null;
@@ -33,7 +35,7 @@ public class QueryStep extends Step<String> {
                 throw new  NotAcceptableException();
             throw ex;
         }
-        return new DataIterator(rawData, null, null, null);
+        return new DataIterator(rawData, connection, 30000l, null);
     }
 
     public Object[] getParams() {
