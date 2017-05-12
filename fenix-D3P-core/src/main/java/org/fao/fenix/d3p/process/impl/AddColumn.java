@@ -88,8 +88,8 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         for (DSDColumn column : source.getDsd().getColumns()) {
             if (params.getColumn().getId().equals(column.getId()))
                 throw new BadRequestException("id equals");
-            if (params.getColumn().getSubject() != null && column.getSubject() != null && params.getColumn().getSubject().equals(column.getSubject()))
-                throw new BadRequestException("subject equals");
+//            if (params.getColumn().getSubject() != null && column.getSubject() != null && params.getColumn().getSubject().equals(column.getSubject()))
+//                throw new BadRequestException("subject equals");
         }
         DataType columnDatatype = params.getColumn().getDataType();
         Object value = params.getValue();
@@ -187,7 +187,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // if key is null or empty, stop here
                     if (secondLevelMap == null || secondLevelMap.isEmpty()) {
-                        query.append(valuesFirstLevel.get(i) == null ? " ELSE NULL " : " ELSE " + buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType()));
+                        query.append(valuesFirstLevel.get(i) == null ? " ELSE NULL " : " ELSE " + getSqlValue(valuesFirstLevel.get(i)));
                         // to create the label map
                         valuesList.add(valuesFirstLevel.get(i).toString());
                         break;
@@ -202,7 +202,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                         String valueFormatted = null;
                         if (valuesSecondLevel.get(j) != null)
-                            valueFormatted = buildRightString(valuesSecondLevel.get(j), params.getColumn().getDataType());
+                            valueFormatted = getSqlValue(valuesSecondLevel.get(j));
                         String valueToAppend = valuesSecondLevel.get(j) == null ?
                                 " IS NULL " :
                                 " =" + valueFormatted;
@@ -217,7 +217,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
 
                     // remove AND statement and add value
                     query.setLength(query.length() - 4);
-                    String directValue = buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType());
+                    String directValue = getSqlValue(valuesFirstLevel.get(i));
                     // to create the label map
                     valuesList.add(valuesFirstLevel.get(i).toString());
 
@@ -226,7 +226,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
                 } else if (key instanceof String) {
                     query.append(" WHEN " + key);
                     query.append(" THEN ");
-                    String directValue = buildRightString(valuesFirstLevel.get(i), params.getColumn().getDataType());
+                    String directValue = getSqlValue(valuesFirstLevel.get(i));
 
                     // to create the label map
                     valuesList.add(valuesFirstLevel.get(i).toString());
@@ -244,7 +244,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         } else if (value instanceof String || value instanceof Integer || value instanceof Boolean || value instanceof Double) {
             // direct values
             query.append("WHEN 1=1 THEN ");
-            String directValue = buildRightString(value, params.getColumn().getDataType());
+            String directValue = getSqlValue(value);
 
             // to create the label map
             valuesList.add(value.toString());
@@ -282,10 +282,14 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     }
 
     // Utils
-    private String buildRightString(Object value, DataType columnDatatype) {
-        return (value instanceof String && (columnDatatype == DataType.code || columnDatatype == DataType.customCode || columnDatatype == DataType.text)) ?
-                Pattern.matches("^(@@direct).*$",value.toString())?
-                        value.toString().replace("@@direct","") : "\'" + value.toString() + "\'" : value.toString();
+    private String getSqlValue(Object value) {
+        if (value instanceof String)
+            if (Pattern.matches("^(@@direct).*$",value.toString()))
+                return value.toString().replace("@@direct","");
+            else
+                return "\'" + value.toString()+ "\'";
+        else
+            return value.toString();
     }
 
     // no, beacause there could be an expression(string) to generate an integer
