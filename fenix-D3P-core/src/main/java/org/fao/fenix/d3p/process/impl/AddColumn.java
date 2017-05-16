@@ -30,7 +30,6 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     private @Inject StepFactory stepFactory;
     // to inject d3s services
     private @Inject Resources resource;
-    Language[] languages;
 
 
     @Override
@@ -43,13 +42,13 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         StepType type = source.getType();
         String tableName = type == StepType.table ? (String) source.getData() : '(' + (String) source.getData() + ") as " + source.getRid();
 
+        //Update dsd
         DSDDataset dsd = source.getDsd();
         dsd.getColumns().add(params.getColumn());
 
-        Map<String, Map<String, String>> labelCodes = new HashMap<>();
-
-
         //Add label with languages
+        Map<String, Map<String, String>> labelCodes = new HashMap<>();
+        Language[] languages = new Language[0];
         if (params.getColumn().getDataType() == DataType.code || params.getColumn().getDataType() == DataType.customCode) {
             languages = DatabaseStandards.getLanguageInfo();
             if (languages != null && languages.length > 0) {
@@ -67,7 +66,7 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
         step.setDsd(dsd);
         dsd.setContextSystem("D3P");
-        step.setData(buildQuery(params, tableName, source.getDsd().getColumns(), labelCodes));
+        step.setData(buildQuery(params, tableName, dsd.getColumns(), labelCodes,languages));
         step.setTypes(type == StepType.query ? ((QueryStep) source).getTypes() : null);
         step.setParams(type == StepType.query ? ((QueryStep) source).getParams() : null);
         return step;
@@ -159,14 +158,13 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
     }
 
     // Logic
-    private String buildQuery(AddColumnParams params, String tableName, Collection<DSDColumn> columns, Map<String, Map<String, String>> codesMap) {
+    private String buildQuery(AddColumnParams params, String tableName, Collection<DSDColumn> columns, Map<String, Map<String, String>> codesMap, Language[] languages) {
 
 
         ArrayList<String> valuesList = new ArrayList<>();
         StringBuilder query = new StringBuilder("SELECT ");
 
-        int offset = (languages == null || languages.length == 0) ? 1 : languages.length + 1;
-        for (int i = 0; i < columns.size() - offset; i++)
+        for (int i = 0; i < columns.size() - (languages.length+1); i++)
             query.append(((List<DSDColumn>) columns).get(i).getId() + ",");
 
         Object value = params.getValue();
@@ -255,14 +253,14 @@ public class AddColumn extends org.fao.fenix.d3p.process.Process<AddColumnParams
         }
         query.append(" AS " + params.getColumn().getId());
         if (codesMap != null && codesMap.size() > 0)
-            addLabelQuery(valuesList, codesMap, query, params.getColumn().getId());
+            addLabelQuery(valuesList, codesMap, query, params.getColumn().getId(), languages);
 
         query.append(" FROM " + tableName + " ");
         return query.toString();
     }
 
 
-    private void addLabelQuery(ArrayList<String> valuesList, Map<String, Map<String, String>> codesMap, StringBuilder query, String columnId) {
+    private void addLabelQuery(ArrayList<String> valuesList, Map<String, Map<String, String>> codesMap, StringBuilder query, String columnId, Language[] languages) {
 
         String querySlice = query.substring(query.indexOf("CASE") - 1);
 
