@@ -27,7 +27,7 @@ public class TableStep extends Step<String> {
 
     @Override
     public Iterator<Object[]> getData(Connection connection) throws Exception {
-        Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
         if (ProcessFactory.getTimeout() != null)
             statement.setQueryTimeout(ProcessFactory.getTimeout());
         ResultSet rawData = null;
