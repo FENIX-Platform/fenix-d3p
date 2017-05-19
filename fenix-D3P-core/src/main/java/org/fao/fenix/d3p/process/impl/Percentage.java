@@ -35,11 +35,11 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             throw new UnsupportedOperationException("Percentage filter can be applied only on a table or an other select query");
         String tableName = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
-        DSDColumn valueColumn = getValueColumn(dsd);
+        DSDColumn valueColumn = params.getValueColumnId()==null ? getValueColumn(dsd) : dsd.findColumn(params.getValueColumnId());
         Collection<String> keyColumnsId = getKeyColumnsId(dsd);
 
         if (tableName==null || valueColumn==null || keyColumnsId==null)
-            throw new BadRequestException("Source step for data percentage calculation is unavailable or incomplete or without a number value column.");
+            throw new BadRequestException("Source step for data percentage calculation is unavailable or incomplete or without a valid number value column.");
 
         String valueColumnId = valueColumn.getId();
 
@@ -107,7 +107,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
                 //Create and return query step
                 QueryStep step = (QueryStep) stepFactory.getInstance(StepType.query);
                 step.setDsd(dsd);
-                step.setData(createQuery(dsd, tableName, total));
+                step.setData(createQuery(dsd, tableName, total, valueColumnId));
                 step.setParams(existingParams);
                 step.setTypes(existingTypes);
                 return step;
@@ -120,11 +120,11 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
 
     //Utils
 
-    private String createQuery(DSDDataset dsd, String tableName, double total) {
+    private String createQuery(DSDDataset dsd, String tableName, double total, String valueColumnId) {
         StringBuilder query = new StringBuilder("SELECT ");
         for (DSDColumn column : dsd.getColumns())
-            if ("value".equals(column.getSubject()))
-                query.append(getValueSelect(total, column.getId())).append(" AS ").append(column.getId()).append(',');
+            if (valueColumnId.equals(column.getId()))
+                query.append(getValueSelect(total, valueColumnId)).append(" AS ").append(valueColumnId).append(',');
             else
                 query.append(column.getId()).append(',');
         query.setLength(query.length()-1);
