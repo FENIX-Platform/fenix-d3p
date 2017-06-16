@@ -1,6 +1,7 @@
 package org.fao.fenix.d3p.dto;
 
 import org.fao.fenix.commons.msd.dto.data.Resource;
+import org.fao.fenix.commons.msd.dto.full.DSDColumn;
 import org.fao.fenix.commons.msd.dto.full.DSDDataset;
 import org.fao.fenix.commons.msd.dto.full.MeContent;
 import org.fao.fenix.commons.msd.dto.full.MeIdentification;
@@ -154,7 +155,25 @@ public abstract class Step<T> {
         metadata.setMeContent(content);
         metadata.setDsd(getCurrentDsd());
 
+        cleanMetadata(metadata);
+
         return metadata;
     }
+
+    private void cleanMetadata(MeIdentification<DSDDataset> metadata) {
+        //Clean columns id
+        DSDDataset dsd = metadata.getDsd();
+        Collection<DSDColumn> columns = dsd!=null ? dsd.getColumns() : null;
+        if (columns!=null)
+            for (DSDColumn column : columns) {
+                String id = column.getId();
+                if (id.charAt(0)=='"')
+                    id = id.substring(1);
+                if (id.charAt(id.length()-1)=='"')
+                    id = id.substring(0, id.length()-1);
+                column.setId(id.trim());
+            }
+    }
+
 
 }
