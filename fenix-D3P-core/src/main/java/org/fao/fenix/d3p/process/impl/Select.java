@@ -85,8 +85,12 @@ public class Select extends org.fao.fenix.d3p.process.Process<Query> {
     private void filter(DSDDataset dsd, Collection<String> columns, Language[] languages) throws Exception {
         if (columns!=null && columns.size()>0) {
             Collection<DSDColumn> dsdColumns = new LinkedList<>();
-            for (String columnId : columns)
-                dsdColumns.add(dsd.findColumn(columnId));
+            for (String columnId : columns) {
+                DSDColumn column = dsd.findColumn(columnId);
+                if (column==null)
+                    throw new BadRequestException("Column '"+columnId+"' not found by 'select' process");
+                dsdColumns.add(column);
+            }
             dsd.setColumns(dsdColumns);
         }
         if (languages!=null && languages.length>0)
