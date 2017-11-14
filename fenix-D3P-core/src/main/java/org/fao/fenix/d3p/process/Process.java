@@ -174,7 +174,6 @@ public abstract class Process<T> {
                             whereCondition.setCharAt(whereCondition.length() - 1, ')');
                             break;
                         case table:
-
                             validate(fieldFilter, dsdColumns, otherSteps);
                             for (TableFilter filter : fieldFilter.tables) {
                                 whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
@@ -297,12 +296,15 @@ public abstract class Process<T> {
                             //TODO verify column data type and values type cmpatibility
                             Object value = getVariable(fieldFilter.variable);
                             if (value instanceof Object[]) {
-                                whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
-                                for (Object v : (Object[])value) {
-                                    whereCondition.append("?,");
-                                    params.add(v);
-                                }
-                                whereCondition.setCharAt(whereCondition.length() - 1, ')');
+                                if (((Object[])value).length>0) {
+                                    whereCondition.append(" AND ").append(fieldName).append(exclude ? " NOT IN (" : " IN (");
+                                    for (Object v : (Object[]) value) {
+                                        whereCondition.append("?,");
+                                        params.add(v);
+                                    }
+                                    whereCondition.setCharAt(whereCondition.length() - 1, ')');
+                                } else
+                                    whereCondition.append(" AND 1<>1");
                             } else {
                                 whereCondition.append(" AND ").append(fieldName).append(exclude ? " != ? " : " = ? ");
                                 params.add(value);
