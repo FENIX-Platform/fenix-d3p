@@ -28,8 +28,7 @@ public class Chain extends Flow {
 
 
     @Override
-    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
-        //Verify applicability TODO handle error
+    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow, boolean lazy) throws Exception {        //Verify applicability TODO handle error
         if (!isSingleChain(sourceSteps, resultRidList, flow))
             throw new UnsupportedOperationException();
 
@@ -57,7 +56,7 @@ public class Chain extends Flow {
 
         //Generate and return in-memory resource from the last step
         Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
-        result.put(previousStep.getRid(),previousStep.getResource());
+        result.put(previousStep.getRid(),previousStep.getResource(lazy));
         return result;
     }
 

@@ -35,7 +35,7 @@ public class Union extends org.fao.fenix.d3p.process.Process<UnionParams> {
             //Retrieve data
             Collection<Object[]> resultingData = new LinkedList<>();
             for (QueryStep unionQueryStep : unionByStorage)
-                resultingData.addAll(unionQueryStep.getResource().getData());
+                resultingData.addAll(unionQueryStep.getResource(true).getData());
             //Create IteratorStep
             IteratorStep step = (IteratorStep)stepFactory.getInstance(StepType.iterator);
             step.setDsd(unionByStorage[0].getDsd());

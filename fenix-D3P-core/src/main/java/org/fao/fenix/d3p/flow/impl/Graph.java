@@ -29,7 +29,7 @@ public class Graph extends Flow {
 
 
     @Override
-    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow) throws Exception {
+    public Map<StepId, Resource<DSDDataset,Object[]>> process(Map<StepId,TableStep> sourceSteps, Set<StepId> resultRidList, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow, boolean lazy) throws Exception {
         //Build graph
         Map<StepId, Node> nodesById = new HashMap<>();
         Collection<Node> sourceNodes = getGraph(nodesById, sourceSteps, flow);
@@ -38,20 +38,20 @@ public class Graph extends Flow {
             //Apply flow
             Map<StepId, Resource<DSDDataset,Object[]>> result = new HashMap<>();
             for (Step source : sourceSteps.values())
-                traverse(nodesById, processes, flow, result, source);
+                traverse(nodesById, processes, flow, result, source, lazy);
             return result;
         } catch(NoDataException ex) {
             throw new BadRequestException("Multiple iterator step consuming identified into the flow");
         }
     }
 
-    private void traverse (Map<StepId, Node> nodesById, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow, Map<StepId, Resource<DSDDataset,Object[]>> result, Step source) throws Exception {
+    private void traverse (Map<StepId, Node> nodesById, Process[] processes, org.fao.fenix.commons.process.dto.Process[] flow, Map<StepId, Resource<DSDDataset,Object[]>> result, Step source, boolean lazy) throws Exception {
         //Retrieve previous process info
         Node previousNode = nodesById.get(source.getRid());
         source.setOneToMany(previousNode.isOneToMany());
         //Store result
         if (previousNode.isResult())
-            result.put(source.getRid(), source.getResource());
+            result.put(source.getRid(), source.getResource(lazy));
         //Apply next process steps
         for (Node nextNode : previousNode.next) {
             nextNode.sources.add(source);
@@ -71,7 +71,7 @@ public class Graph extends Flow {
                 dsd.setDatasources(null);
                 dsd.setRID(null);
                 //Propagation into the graph
-                traverse(nodesById, processes, flow, result, nextNodeResult);
+                traverse(nodesById, processes, flow, result, nextNodeResult, lazy);
             }
         }
     }

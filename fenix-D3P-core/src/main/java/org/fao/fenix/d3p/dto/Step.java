@@ -74,75 +74,84 @@ public abstract class Step<T> {
     }
 
     //Utils
-    public Resource<DSDDataset,Object[]> getResource() throws Exception {
+    public Resource<DSDDataset,Object[]> getResource(boolean lazy) throws Exception {
         Connection connection = storage.getConnection();
         final Iterator<Object[]> rawData = getData(connection);
-        return new Resource<>(getMetadata(), rawData != null ? new Collection<Object[]>() {
-            @Override
-            public int size() {
-                return Integer.MAX_VALUE;
-            }
+        if (rawData == null)
+            return new Resource<>(getMetadata(), new LinkedList<Object[]>());
+        if (lazy)
+            return new Resource<>(getMetadata(), new Collection<Object[]>() {
+                @Override
+                public int size() {
+                    return Integer.MAX_VALUE;
+                }
 
-            @Override
-            public boolean isEmpty() {
-                return !rawData.hasNext();
-            }
+                @Override
+                public boolean isEmpty() {
+                    return !rawData.hasNext();
+                }
 
-            @Override
-            public boolean contains(Object o) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean contains(Object o) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public Iterator<Object[]> iterator() {
-                return rawData;
-            }
+                @Override
+                public Iterator<Object[]> iterator() {
+                    return rawData;
+                }
 
-            @Override
-            public Object[] toArray() {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public Object[] toArray() {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public <T> T[] toArray(T[] a) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public <T> T[] toArray(T[] a) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean add(Object[] objects) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean add(Object[] objects) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean remove(Object o) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean remove(Object o) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean containsAll(Collection<?> c) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean containsAll(Collection<?> c) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean addAll(Collection<? extends Object[]> c) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean addAll(Collection<? extends Object[]> c) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean removeAll(Collection<?> c) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean removeAll(Collection<?> c) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public boolean retainAll(Collection<?> c) {
-                throw new UnsupportedOperationException();
-            }
+                @Override
+                public boolean retainAll(Collection<?> c) {
+                    throw new UnsupportedOperationException();
+                }
 
-            @Override
-            public void clear() {
-                throw new UnsupportedOperationException();
-            }
-        } : new LinkedList<Object[]>());
+                @Override
+                public void clear() {
+                    throw new UnsupportedOperationException();
+                }
+            });
+        else {
+            Collection<Object[]> data = new LinkedList<>();
+            while (rawData.hasNext())
+                data.add(rawData.next());
+            return new Resource<>(getMetadata(), data);
+        }
     }
 
     public MeIdentification<DSDDataset> getMetadata () {
