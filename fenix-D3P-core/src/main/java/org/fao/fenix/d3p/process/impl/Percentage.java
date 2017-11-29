@@ -35,7 +35,7 @@ public class Percentage extends org.fao.fenix.d3p.process.Process<PercentageFilt
             throw new UnsupportedOperationException("Percentage filter can be applied only on a table or an other select query");
         String tableName = type==StepType.table ? (String)source.getData() : '('+(String)source.getData()+") as " + source.getRid();
         DSDDataset dsd = source.getDsd();
-        DSDColumn valueColumn = params.getValueColumnId()==null ? getValueColumn(dsd) : dsd.findColumn(params.getValueColumnId());
+        DSDColumn valueColumn = params == null || params.getValueColumnId()==null ? getValueColumn(dsd) : dsd.findColumn(params.getValueColumnId());
         Collection<String> keyColumnsId = getKeyColumnsId(dsd);
 
         if (tableName==null || valueColumn==null || keyColumnsId==null)
